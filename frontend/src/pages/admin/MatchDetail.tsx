@@ -139,7 +139,7 @@ export default function MatchDetail() {
                           <div style={{ marginTop: 4, textTransform: "capitalize", fontSize: 12, fontWeight: 500 }}>{key}</div>
                           {val.reasoning && (
                             <Tooltip title={val.reasoning}>
-                              <Text type="secondary" style={{ fontSize: 10, display: "block", lineHeight: 1.3, maxHeight: 40, overflow: "hidden", textOverflow: "ellipsis" }}>{val.reasoning}</Text>
+                              <Text type="secondary" style={{ fontSize: 10, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.3, marginTop: 4, cursor: "help" }}>{val.reasoning}</Text>
                             </Tooltip>
                           )}
                         </Col>
