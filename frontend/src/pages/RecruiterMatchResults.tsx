@@ -157,7 +157,7 @@ export default function RecruiterMatchResults() {
                       <div key={i}><WarningOutlined style={{ color: "#f59e0b", marginRight: 4 }} /><Tag color={g.severity === "HIGH" ? "red" : "orange"}>{g.severity}</Tag> {g.area}: {g.detail}</div>
                     ))}
                     {a.mustHaveChecklist?.length > 0 && (
-                      <div style={{ marginTop: 8 }}>
+                      <div style={{ marginTop: 16, borderTop: "1px solid #f0f0f0", paddingTop: 12 }}>
                         <Text strong>Requirements:</Text>
                         {a.mustHaveChecklist.map((item: any, i: number) => (
                           <div key={i}>
