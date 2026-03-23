@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { ConfigProvider } from "antd";
+import { ConfigProvider, App as AntApp } from "antd";
 import App from "./App";
 import "./styles/rs-theme.css";
 import "./styles/components/Pipeline.css";
@@ -19,9 +19,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           },
         }}
       >
-        <div className="rs-theme">
-          <App />
-        </div>
+        <AntApp>
+          <div className="rs-theme">
+            <App />
+          </div>
+        </AntApp>
       </ConfigProvider>
     </BrowserRouter>
   </React.StrictMode>
