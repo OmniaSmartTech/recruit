@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, Typography, Tag, Button, Space, Spin, Progress, Row, Col, Statistic, Select } from "antd";
+import { Card, Typography, Tag, Button, Space, Spin, Progress, Row, Col, Statistic, Select, Tooltip } from "antd";
 import { ArrowLeftOutlined, UserOutlined, CheckCircleOutlined, WarningOutlined, TrophyOutlined } from "@ant-design/icons";
 import { adminFetch } from "../../utils/api";
 import DataTable, { DataTableColumn } from "../../components/shared/DataTable";
@@ -134,10 +134,14 @@ export default function MatchDetail() {
                   {a.scoreBreakdown && (
                     <Row gutter={16} style={{ marginBottom: 16 }}>
                       {Object.entries(a.scoreBreakdown).map(([key, val]: [string, any]) => (
-                        <Col xs={6} key={key} style={{ textAlign: "center" }}>
+                        <Col xs={6} key={key} style={{ textAlign: "center", overflow: "hidden" }}>
                           <Progress type="circle" percent={val.score} size={60} strokeColor={scoreColor(val.score)} format={(p) => `${p}`} />
-                          <div style={{ marginTop: 4, textTransform: "capitalize", fontSize: 12 }}>{key}</div>
-                          {val.reasoning && <Text type="secondary" style={{ fontSize: 11 }}>{val.reasoning}</Text>}
+                          <div style={{ marginTop: 4, textTransform: "capitalize", fontSize: 12, fontWeight: 500 }}>{key}</div>
+                          {val.reasoning && (
+                            <Tooltip title={val.reasoning}>
+                              <Text type="secondary" style={{ fontSize: 10, display: "block", lineHeight: 1.3, maxHeight: 40, overflow: "hidden", textOverflow: "ellipsis" }}>{val.reasoning}</Text>
+                            </Tooltip>
+                          )}
                         </Col>
                       ))}
                     </Row>
