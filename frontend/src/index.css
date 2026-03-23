@@ -569,6 +569,13 @@ body {
   cursor: pointer;
 }
 
+/* Badge overflow fix for DataTable cells */
+.cell-overflow-visible,
+td.cell-overflow-visible,
+.data-table-container td.cell-overflow-visible {
+  overflow: visible !important;
+}
+
 .cv-upload-area:hover {
   border-color: var(--theme-primary);
   background: var(--theme-primary-lighter);

@@ -161,11 +161,15 @@ export default function AdminCvBank() {
       title: "Docs",
       key: "docs",
       width: 70,
-      render: (_: unknown, record: CandidateRow) => (
-        <Badge count={record._count?.documents || 0} showZero>
-          <Button size="small" icon={<FileOutlined />} onClick={(e) => { e.stopPropagation(); openDocs(record.id, record.name); }} />
-        </Badge>
-      ),
+      className: "cell-overflow-visible",
+      render: (_: unknown, record: CandidateRow) => {
+        const count = record._count?.documents || 0;
+        return (
+          <Badge count={count} offset={[-4, 0]} size="small" style={{ zIndex: 1 }}>
+            <Button size="small" icon={<FileOutlined />} onClick={(e) => { e.stopPropagation(); openDocs(record.id, record.name); }} />
+          </Badge>
+        );
+      },
       filterRender: (_, r) => String(r._count?.documents || 0),
       sortable: true,
       sorter: (a, b) => (a._count?.documents || 0) - (b._count?.documents || 0),
@@ -174,11 +178,15 @@ export default function AdminCvBank() {
       title: "Notes",
       key: "notes",
       width: 70,
-      render: (_: unknown, record: CandidateRow) => (
-        <Badge count={record._count?.notes || 0} showZero>
-          <Button size="small" icon={<MessageOutlined />} onClick={(e) => { e.stopPropagation(); openNotes(record.id, record.name); }} />
-        </Badge>
-      ),
+      className: "cell-overflow-visible",
+      render: (_: unknown, record: CandidateRow) => {
+        const count = record._count?.notes || 0;
+        return (
+          <Badge count={count} offset={[-4, 0]} size="small" style={{ zIndex: 1 }}>
+            <Button size="small" icon={<MessageOutlined />} onClick={(e) => { e.stopPropagation(); openNotes(record.id, record.name); }} />
+          </Badge>
+        );
+      },
       sortable: true,
       sorter: (a, b) => (a._count?.notes || 0) - (b._count?.notes || 0),
     },
