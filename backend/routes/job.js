@@ -15,24 +15,15 @@ router.get("/", async (req, res) => {
       where: { organisationId: req.user.organisationId },
       orderBy: { createdAt: "desc" },
       include: {
-        _count: { select: { candidates: true } },
+        _count: { select: { jobCandidates: true, matchRuns: true } },
       },
     });
 
-    // Enrich with stats
-    const enriched = await Promise.all(
-      jobs.map(async (job) => {
-        const avgScore = await prisma.candidate.aggregate({
-          where: { jobId: job.id, matchScore: { not: null } },
-          _avg: { matchScore: true },
-        });
-        return {
-          ...job,
-          candidateCount: job._count.candidates,
-          avgMatchScore: Math.round(avgScore._avg.matchScore || 0),
-        };
-      })
-    );
+    const enriched = jobs.map((job) => ({
+      ...job,
+      candidateCount: job._count.jobCandidates,
+      matchRunCount: job._count.matchRuns,
+    }));
 
     res.json(enriched);
   } catch (err) {
