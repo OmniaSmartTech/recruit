@@ -147,6 +147,7 @@ router.get("/candidates", async (req, res) => {
         isActive: true,
         createdAt: true,
         pin: { select: { label: true, type: true } },
+        _count: { select: { documents: true, notes: true } },
       },
     });
 
@@ -171,6 +172,8 @@ router.get("/candidates/:id", async (req, res) => {
       where: { id: req.params.id, organisationId: req.user.organisationId },
       include: {
         pin: { select: { label: true, type: true } },
+        documents: { orderBy: { createdAt: "desc" } },
+        notes: { orderBy: { createdAt: "desc" } },
         matchResults: {
           orderBy: { createdAt: "desc" },
           include: {
@@ -432,6 +435,138 @@ router.delete("/share-links/:id", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete share link" });
+  }
+});
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+const docUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+router.get("/candidates/:id/documents", async (req, res) => {
+  try {
+    const docs = await prisma.document.findMany({
+      where: { candidateId: req.params.id },
+      orderBy: { createdAt: "desc" },
+    });
+    const enriched = await Promise.all(docs.map(async (d) => ({
+      ...d,
+      downloadUrl: d.fileKey ? await getDownloadUrl(d.fileKey) : null,
+    })));
+    res.json(enriched);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch documents" });
+  }
+});
+
+router.post("/candidates/:id/documents", docUpload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file" });
+
+    const candidate = await prisma.candidate.findFirst({
+      where: { id: req.params.id, organisationId: req.user.organisationId },
+    });
+    if (!candidate) return res.status(404).json({ error: "Candidate not found" });
+
+    const s3Key = `recruitsmart/${req.user.organisationId}/docs/${candidate.id}/${uuidv4()}-${req.file.originalname}`;
+    await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
+
+    const doc = await prisma.document.create({
+      data: {
+        candidateId: candidate.id,
+        fileName: req.file.originalname,
+        fileKey: s3Key,
+        fileSize: req.file.size,
+        fileType: req.file.mimetype,
+        label: req.body.label || null,
+        uploadedBy: req.user.email || "admin",
+      },
+    });
+
+    const downloadUrl = await getDownloadUrl(s3Key);
+    res.status(201).json({ ...doc, downloadUrl });
+  } catch (err) {
+    console.error("[admin] Document upload error:", err);
+    res.status(500).json({ error: "Failed to upload document" });
+  }
+});
+
+router.delete("/documents/:id", async (req, res) => {
+  try {
+    const doc = await prisma.document.findUnique({ where: { id: req.params.id }, include: { candidate: true } });
+    if (!doc || doc.candidate.organisationId !== req.user.organisationId) {
+      return res.status(404).json({ error: "Not found" });
+    }
+    if (doc.fileKey) {
+      const { deleteFile } = require("../utils/s3");
+      await deleteFile(doc.fileKey);
+    }
+    await prisma.document.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete document" });
+  }
+});
+
+// ─── Notes ───────────────────────────────────────────────────────────────────
+
+router.get("/candidates/:id/notes", async (req, res) => {
+  try {
+    const notes = await prisma.candidateNote.findMany({
+      where: { candidateId: req.params.id },
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(notes);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch notes" });
+  }
+});
+
+router.post("/candidates/:id/notes", async (req, res) => {
+  try {
+    const candidate = await prisma.candidate.findFirst({
+      where: { id: req.params.id, organisationId: req.user.organisationId },
+    });
+    if (!candidate) return res.status(404).json({ error: "Candidate not found" });
+
+    const note = await prisma.candidateNote.create({
+      data: {
+        candidateId: candidate.id,
+        content: req.body.content,
+        author: req.user.email || "admin",
+      },
+    });
+    res.status(201).json(note);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to add note" });
+  }
+});
+
+router.patch("/notes/:id", async (req, res) => {
+  try {
+    const note = await prisma.candidateNote.findUnique({ where: { id: req.params.id }, include: { candidate: true } });
+    if (!note || note.candidate.organisationId !== req.user.organisationId) {
+      return res.status(404).json({ error: "Not found" });
+    }
+    const updated = await prisma.candidateNote.update({
+      where: { id: req.params.id },
+      data: { content: req.body.content },
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update note" });
+  }
+});
+
+router.delete("/notes/:id", async (req, res) => {
+  try {
+    const note = await prisma.candidateNote.findUnique({ where: { id: req.params.id }, include: { candidate: true } });
+    if (!note || note.candidate.organisationId !== req.user.organisationId) {
+      return res.status(404).json({ error: "Not found" });
+    }
+    await prisma.candidateNote.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete note" });
   }
 });
 

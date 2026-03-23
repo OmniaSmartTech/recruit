@@ -95,7 +95,10 @@ Return ONLY valid JSON.`,
  * Applicant uploads CV + fills form.
  * CV is parsed → anonymised profile created → stored in CV bank.
  */
-router.post("/upload", upload.single("cv"), async (req, res) => {
+router.post("/upload", upload.fields([
+  { name: "cv", maxCount: 1 },
+  { name: "documents", maxCount: 10 },
+]), async (req, res) => {
   try {
     const candidateId = uuidv4();
 
@@ -124,23 +127,21 @@ router.post("/upload", upload.single("cv"), async (req, res) => {
     let cvFileName = null;
     let cvText = null;
 
-    if (req.file) {
-      cvFileName = req.file.originalname;
+    const cvFile = req.files?.cv?.[0];
+    if (cvFile) {
+      cvFileName = cvFile.originalname;
       try {
-        cvText = await parseCv(req.file.buffer, cvFileName);
+        cvText = await parseCv(cvFile.buffer, cvFileName);
       } catch (parseErr) {
         console.error("[applicant] CV parse failed:", parseErr.message);
-        // Continue without CV text — form data still works
       }
 
-      // S3 upload — optional, don't fail the whole request if it errors
       try {
         const s3Key = `recruitsmart/${req.pin.organisationId}/cvs/${candidateId}-${cvFileName}`;
-        await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
+        await uploadFile(s3Key, cvFile.buffer, cvFile.mimetype);
         cvFileKey = s3Key;
       } catch (s3Err) {
         console.error("[applicant] S3 upload failed (non-blocking):", s3Err.message);
-        // CV still parsed, just not stored in S3
       }
     }
 
@@ -199,10 +200,34 @@ router.post("/upload", upload.single("cv"), async (req, res) => {
       },
     });
 
+    // Save additional documents (certs, portfolio, etc.) — up to 10
+    const additionalDocs = req.files?.documents || [];
+    let docCount = 0;
+    for (const doc of additionalDocs) {
+      try {
+        const docKey = `recruitsmart/${req.pin.organisationId}/docs/${candidateId}/${uuidv4()}-${doc.originalname}`;
+        await uploadFile(docKey, doc.buffer, doc.mimetype);
+        await prisma.document.create({
+          data: {
+            candidateId,
+            fileName: doc.originalname,
+            fileKey: docKey,
+            fileSize: doc.size,
+            fileType: doc.mimetype,
+            uploadedBy: "applicant",
+          },
+        });
+        docCount++;
+      } catch (docErr) {
+        console.error(`[applicant] Doc upload failed for ${doc.originalname}:`, docErr.message);
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: "Your application has been submitted successfully",
       candidateId: candidate.id,
+      documentsUploaded: docCount,
     });
   } catch (err) {
     console.error("[applicant] Upload error:", err);

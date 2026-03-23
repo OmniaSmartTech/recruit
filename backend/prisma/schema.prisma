@@ -124,6 +124,8 @@ model Candidate {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  documents      Document[]
+  notes          CandidateNote[]
   matchResults   MatchResult[]
   jobCandidates  JobCandidate[]
 
@@ -185,6 +187,37 @@ model MatchResult {
   @@index([matchRunId])
   @@index([candidateId])
   @@index([aiScore(sort: Desc)])
+}
+
+// =============================================================================
+// DOCUMENTS & NOTES
+// =============================================================================
+
+model Document {
+  id             String    @id @default(uuid())
+  candidateId    String
+  candidate      Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  fileName       String
+  fileKey        String?   // S3 key or local path
+  fileSize       Int?      // bytes
+  fileType       String?   // MIME type
+  label          String?   // e.g. "AWS Certificate", "Portfolio", "Reference Letter"
+  uploadedBy     String?   // "applicant" or recruiter email
+  createdAt      DateTime  @default(now())
+
+  @@index([candidateId])
+}
+
+model CandidateNote {
+  id             String    @id @default(uuid())
+  candidateId    String
+  candidate      Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  content        String    @db.Text
+  author         String    // recruiter name/email
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([candidateId])
 }
 
 // =============================================================================

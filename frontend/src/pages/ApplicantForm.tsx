@@ -24,6 +24,7 @@ export default function ApplicantForm() {
   const [skills, setSkills] = useState<string[]>([]);
   const [suggestedSkills, setSuggestedSkills] = useState<string[]>([]);
   const [useWizard, setUseWizard] = useState(false);
+  const [docFiles, setDocFiles] = useState<File[]>([]);
 
   const pin = getPin();
   if (!pin) { navigate("/"); return null; }
@@ -132,6 +133,9 @@ export default function ApplicantForm() {
         (values.certifications || "").split("\n").map((s: string) => s.trim()).filter(Boolean)
       ));
 
+      // Additional documents (certs, portfolio, etc.)
+      docFiles.forEach((f) => formData.append("documents", f));
+
       await pinUpload("/applicant/upload", formData);
       setStep(2);
     } catch (err: any) {
@@ -150,7 +154,7 @@ export default function ApplicantForm() {
           title="Application Submitted"
           subTitle="Thank you! Your CV and details have been received. We'll be in touch."
           extra={
-            <Button type="primary" onClick={() => { setStep(0); form.resetFields(); setCvFile(null); setSkills([]); setSuggestedSkills([]); }}>
+            <Button type="primary" onClick={() => { setStep(0); form.resetFields(); setCvFile(null); setSkills([]); setSuggestedSkills([]); setDocFiles([]); }}>
               Submit Another
             </Button>
           }
@@ -401,6 +405,35 @@ export default function ApplicantForm() {
 
               <Form.Item name="certifications" label="Certifications (one per line)">
                 <TextArea rows={3} placeholder="AWS Solutions Architect&#10;PMP Certified" />
+              </Form.Item>
+
+              <Divider>Supporting Documents (optional)</Divider>
+
+              <Form.Item label={`Additional Documents (${docFiles.length}/10)`}>
+                <Upload
+                  accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg"
+                  multiple
+                  maxCount={10}
+                  fileList={docFiles.map((f, i) => ({ uid: String(i), name: f.name, status: "done" as const }))}
+                  beforeUpload={(file) => {
+                    if (docFiles.length >= 10) {
+                      message.warning("Maximum 10 documents allowed");
+                      return false;
+                    }
+                    setDocFiles((prev) => [...prev, file]);
+                    return false;
+                  }}
+                  onRemove={(file) => {
+                    setDocFiles((prev) => prev.filter((_, i) => String(i) !== file.uid));
+                  }}
+                >
+                  <Button icon={<UploadOutlined />} disabled={docFiles.length >= 10}>
+                    Upload certificates, references, portfolio...
+                  </Button>
+                </Upload>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  PDF, DOCX, images — max 10 files, 10MB each
+                </Text>
               </Form.Item>
 
               <Button
