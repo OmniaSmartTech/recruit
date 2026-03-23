@@ -149,6 +149,7 @@ export default function RecruiterMatchResults() {
                         ))}
                       </Row>
                     )}
+                    {a.strengths?.length > 0 && <div style={{ marginTop: 16, borderTop: "1px solid #f0f0f0", paddingTop: 12 }} />}
                     {a.strengths?.map((s: any, i: number) => (
                       <div key={i}><CheckCircleOutlined style={{ color: "#10b981", marginRight: 4 }} /><strong>{s.area}:</strong> {s.detail}</div>
                     ))}
