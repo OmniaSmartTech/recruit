@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card, Form, Input, Button, Typography, Upload, Select, InputNumber,
-  Tag, Space, message, Result, Steps, Row, Col, Divider,
+  Tag, Space, message, Result, Steps, Row, Col, Divider, Spin, Alert, Checkbox,
 } from "antd";
 import {
   UploadOutlined, UserOutlined, ArrowLeftOutlined,
-  CheckCircleOutlined, FileOutlined,
+  CheckCircleOutlined, FileOutlined, BulbOutlined, ThunderboltOutlined,
 } from "@ant-design/icons";
 import { getPin, pinUpload } from "../utils/api";
 
@@ -16,28 +16,94 @@ const { TextArea } = Input;
 export default function ApplicantForm() {
   const navigate = useNavigate();
   const [form] = Form.useForm();
-  const [step, setStep] = useState(0); // 0 = upload CV, 1 = fill form, 2 = success
+  const [step, setStep] = useState(0);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [parsing, setParsing] = useState(false);
   const [skillInput, setSkillInput] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
+  const [suggestedSkills, setSuggestedSkills] = useState<string[]>([]);
+  const [useWizard, setUseWizard] = useState(false);
 
   const pin = getPin();
-  if (!pin) {
-    navigate("/");
-    return null;
-  }
+  if (!pin) { navigate("/"); return null; }
 
-  const addSkill = () => {
-    const s = skillInput.trim();
+  const addSkill = (skill?: string) => {
+    const s = (skill || skillInput).trim();
     if (s && !skills.includes(s)) {
       setSkills([...skills, s]);
+      // Remove from suggestions if it was there
+      setSuggestedSkills((prev) => prev.filter((ss) => ss !== s));
     }
-    setSkillInput("");
+    if (!skill) setSkillInput("");
   };
 
   const removeSkill = (skill: string) => {
     setSkills(skills.filter((s) => s !== skill));
+  };
+
+  const handleCvUploadAndParse = async () => {
+    if (!cvFile || !useWizard) {
+      setStep(1);
+      return;
+    }
+
+    setParsing(true);
+    try {
+      const formData = new FormData();
+      formData.append("cv", cvFile);
+
+      const res = await fetch("/api/applicant/parse-cv", {
+        method: "POST",
+        headers: { "x-pin-code": pin || "" },
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+
+        // Pre-populate form fields
+        form.setFieldsValue({
+          name: data.name || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          currentRole: data.currentRole || "",
+          currentCompany: data.currentCompany || "",
+          yearsExp: data.yearsExp || undefined,
+          linkedinUrl: data.linkedinUrl || "",
+          portfolioUrl: data.portfolioUrl || "",
+        });
+
+        // Set skills
+        if (data.skills?.length) {
+          setSkills(data.skills);
+        }
+
+        // Set suggested skills (ones AI thinks they might have)
+        if (data.suggestedSkills?.length) {
+          const existing = new Set((data.skills || []).map((s: string) => s.toLowerCase()));
+          setSuggestedSkills(
+            data.suggestedSkills.filter((s: string) => !existing.has(s.toLowerCase()))
+          );
+        }
+
+        // Set certifications
+        if (data.certifications?.length) {
+          form.setFieldsValue({
+            certifications: data.certifications.join("\n"),
+          });
+        }
+
+        message.success("CV parsed — please review and complete your details");
+      } else {
+        message.warning("Couldn't auto-fill from CV — please fill in manually");
+      }
+    } catch {
+      message.warning("CV parsing failed — please fill in your details manually");
+    } finally {
+      setParsing(false);
+      setStep(1);
+    }
   };
 
   const handleSubmit = async () => {
@@ -69,7 +135,7 @@ export default function ApplicantForm() {
       await pinUpload("/applicant/upload", formData);
       setStep(2);
     } catch (err: any) {
-      if (err.errorFields) return; // form validation
+      if (err.errorFields) return;
       message.error(err.message || "Submission failed");
     } finally {
       setSubmitting(false);
@@ -84,7 +150,7 @@ export default function ApplicantForm() {
           title="Application Submitted"
           subTitle="Thank you! Your CV and details have been received. We'll be in touch."
           extra={
-            <Button type="primary" onClick={() => { setStep(0); form.resetFields(); setCvFile(null); setSkills([]); }}>
+            <Button type="primary" onClick={() => { setStep(0); form.resetFields(); setCvFile(null); setSkills([]); setSuggestedSkills([]); }}>
               Submit Another
             </Button>
           }
@@ -96,12 +162,7 @@ export default function ApplicantForm() {
   return (
     <div style={{ minHeight: "100vh", background: "#f9fafb", padding: "24px 16px" }}>
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
-        <Button
-          type="link"
-          icon={<ArrowLeftOutlined />}
-          onClick={() => step === 0 ? navigate("/") : setStep(0)}
-          style={{ padding: 0, marginBottom: 16 }}
-        >
+        <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => step === 0 ? navigate("/") : setStep(0)} style={{ padding: 0, marginBottom: 16 }}>
           Back
         </Button>
 
@@ -110,20 +171,13 @@ export default function ApplicantForm() {
           <Title level={3}>Submit Your Application</Title>
         </div>
 
-        <Steps
-          current={step}
-          items={[
-            { title: "Upload CV" },
-            { title: "Your Details" },
-          ]}
-          style={{ marginBottom: 32 }}
-        />
+        <Steps current={step} items={[{ title: "Upload CV" }, { title: "Your Details" }]} style={{ marginBottom: 32 }} />
 
         {step === 0 && (
           <Card>
             <Title level={4}><FileOutlined /> Upload Your CV</Title>
             <Paragraph type="secondary">
-              Upload your CV and we'll auto-fill as much as we can. You can review and edit on the next step.
+              Upload your CV and we'll extract your details automatically. You can review and edit everything on the next step.
             </Paragraph>
 
             <Upload.Dragger
@@ -131,8 +185,8 @@ export default function ApplicantForm() {
               maxCount={1}
               showUploadList={!!cvFile}
               beforeUpload={(file) => { setCvFile(file); return false; }}
-              onRemove={() => setCvFile(null)}
-              style={{ marginBottom: 24 }}
+              onRemove={() => { setCvFile(null); setUseWizard(false); }}
+              style={{ marginBottom: 16 }}
             >
               <p className="ant-upload-drag-icon">
                 <UploadOutlined style={{ fontSize: 40, color: "#e74c3c" }} />
@@ -141,14 +195,41 @@ export default function ApplicantForm() {
               <p className="ant-upload-hint">PDF, DOCX, DOC, or TXT — max 10MB</p>
             </Upload.Dragger>
 
+            {cvFile && (
+              <div
+                style={{
+                  background: "linear-gradient(135deg, #fff7e6 0%, #fff1f0 100%)",
+                  borderRadius: 8,
+                  padding: "12px 16px",
+                  marginBottom: 16,
+                  border: "1px solid #ffd591",
+                  cursor: "pointer",
+                }}
+                onClick={() => setUseWizard(!useWizard)}
+              >
+                <Checkbox checked={useWizard} onChange={(e) => setUseWizard(e.target.checked)}>
+                  <Space>
+                    <ThunderboltOutlined style={{ color: "#e74c3c", fontSize: 16 }} />
+                    <span style={{ fontWeight: 600 }}>Use RecruitWizard</span>
+                  </Space>
+                </Checkbox>
+                <div style={{ marginLeft: 24, marginTop: 4 }}>
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    Let our AI read your CV and auto-fill the form for you. You can review and edit everything before submitting.
+                  </Text>
+                </div>
+              </div>
+            )}
+
             <Button
               type="primary"
               size="large"
               block
-              onClick={() => setStep(1)}
+              loading={parsing}
+              onClick={handleCvUploadAndParse}
               style={{ height: 48 }}
             >
-              {cvFile ? "Continue with CV" : "Continue without CV"}
+              {parsing ? "RecruitWizard is reading your CV..." : "Continue"}
             </Button>
           </Card>
         )}
@@ -156,9 +237,15 @@ export default function ApplicantForm() {
         {step === 1 && (
           <Card>
             <Title level={4}><UserOutlined /> Your Details</Title>
-            <Paragraph type="secondary">
-              Please review and complete your details. Fields marked * are required.
-            </Paragraph>
+            {cvFile && (
+              <Alert
+                type="info"
+                message="We've pre-filled what we could from your CV. Please review and correct anything that's wrong."
+                showIcon
+                closable
+                style={{ marginBottom: 16 }}
+              />
+            )}
 
             <Form form={form} layout="vertical">
               <Row gutter={16}>
@@ -200,6 +287,7 @@ export default function ApplicantForm() {
                 </Col>
               </Row>
 
+              {/* Skills with suggestions */}
               <Form.Item label="Key Skills">
                 <Space.Compact style={{ width: "100%", marginBottom: 8 }}>
                   <Input
@@ -209,15 +297,35 @@ export default function ApplicantForm() {
                     placeholder="Type a skill and press Enter"
                     style={{ flex: 1 }}
                   />
-                  <Button onClick={addSkill}>Add</Button>
+                  <Button onClick={() => addSkill()}>Add</Button>
                 </Space.Compact>
-                <div>
+                <div style={{ marginBottom: 8 }}>
                   {skills.map((s) => (
                     <Tag key={s} closable onClose={() => removeSkill(s)} color="blue" style={{ marginBottom: 4 }}>
                       {s}
                     </Tag>
                   ))}
                 </div>
+                {suggestedSkills.length > 0 && (
+                  <div style={{ background: "#f6ffed", borderRadius: 6, padding: "8px 12px", border: "1px solid #b7eb8f" }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      <BulbOutlined style={{ marginRight: 4 }} />
+                      Suggested skills (click to add):
+                    </Text>
+                    <div style={{ marginTop: 4 }}>
+                      {suggestedSkills.map((s) => (
+                        <Tag
+                          key={s}
+                          style={{ cursor: "pointer", marginBottom: 4 }}
+                          color="green"
+                          onClick={() => addSkill(s)}
+                        >
+                          + {s}
+                        </Tag>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </Form.Item>
 
               <Row gutter={16}>

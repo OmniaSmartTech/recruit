@@ -28,6 +28,68 @@ const upload = multer({
 router.use(pinAuth("APPLICANT"));
 
 /**
+ * POST /api/applicant/parse-cv
+ *
+ * Parse a CV and return extracted fields for form pre-population.
+ * Does NOT save anything — just extracts and returns.
+ */
+router.post("/parse-cv", upload.single("cv"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const cvText = await parseCv(req.file.buffer, req.file.originalname);
+
+    // Use Claude to extract structured fields from the CV
+    const Anthropic = require("@anthropic-ai/sdk").default;
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2048,
+      messages: [{
+        role: "user",
+        content: `Extract structured information from this CV. Return ONLY a JSON object.
+
+CV TEXT:
+${cvText.substring(0, 6000)}
+
+Return this exact JSON structure (use null for fields you can't find):
+{
+  "name": "Full name",
+  "email": "Email address",
+  "phone": "Phone number",
+  "currentRole": "Current or most recent job title",
+  "currentCompany": "Current or most recent employer",
+  "yearsExp": <number of years experience or null>,
+  "skills": ["skill1", "skill2", ...],
+  "suggestedSkills": ["additional common skills in this field that the candidate likely has based on their experience"],
+  "certifications": ["cert1", "cert2"],
+  "education": [{"level": "BSc/MSc/etc", "field": "Subject", "classification": "Grade or null"}],
+  "linkedinUrl": "LinkedIn URL if found or null",
+  "portfolioUrl": "Portfolio/GitHub URL if found or null"
+}
+
+Return ONLY valid JSON.`,
+      }],
+    });
+
+    const text = response.content[0].text;
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return res.status(500).json({ error: "Failed to parse CV" });
+    }
+
+    const extracted = JSON.parse(jsonMatch[0]);
+    res.json(extracted);
+  } catch (err) {
+    console.error("[applicant] CV parse error:", err);
+    res.status(500).json({ error: "Failed to parse CV. You can fill in the form manually." });
+  }
+});
+
+/**
  * POST /api/applicant/upload
  *
  * Applicant uploads CV + fills form.
