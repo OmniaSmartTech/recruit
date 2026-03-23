@@ -41,20 +41,15 @@ router.get("/:id", async (req, res) => {
         organisationId: req.user.organisationId,
       },
       include: {
-        candidates: {
-          orderBy: { matchScore: { sort: "desc", nulls: "last" } },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            cvFileName: true,
-            status: true,
-            matchScore: true,
-            analyisStatus: true,
-            createdAt: true,
-            analysis: true,
+        jobCandidates: {
+          orderBy: { updatedAt: "desc" },
+          include: {
+            candidate: {
+              select: { id: true, name: true, email: true, currentRole: true, skills: true, yearsExp: true },
+            },
           },
         },
+        _count: { select: { matchRuns: true } },
       },
     });
 
