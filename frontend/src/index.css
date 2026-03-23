@@ -166,7 +166,27 @@ body {
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  background: linear-gradient(135deg, #fef5f4 0%, #f9fafb 50%, #fde8e6 100%);
+  --login-bg-url: url("/recruit-bg.svg");
+}
+
+.login-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--login-bg-url);
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover !important;
+}
+
+.login-page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: rgba(255,255,255,0.04);
+  pointer-events: none;
 }
 
 .login-back-button {
