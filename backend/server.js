@@ -11,6 +11,7 @@ const candidateRoutes = require("./routes/candidate");
 const adminRoutes = require("./routes/admin");
 const authRoutes = require("./routes/auth");
 const shareRoutes = require("./routes/share");
+const pipelineRoutes = require("./routes/pipeline");
 
 const prisma = new PrismaClient();
 const app = express();
@@ -30,6 +31,7 @@ app.use("/api/candidates", candidateRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/share", shareRoutes);
+app.use("/api/pipeline", pipelineRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {

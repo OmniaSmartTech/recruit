@@ -29,6 +29,8 @@ model Organisation {
   jobs           Job[]
   candidates     Candidate[]
   matchRuns      MatchRun[]
+  jobCandidates  JobCandidate[]
+  stageTemplates StageTemplate[]
   scoringConfig  ScoringConfig?
   promptTemplate PromptTemplate?
   shareLinks     ShareLink[]
@@ -74,7 +76,8 @@ model Job {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  matchRuns MatchRun[]
+  matchRuns      MatchRun[]
+  jobCandidates  JobCandidate[]
 
   @@index([organisationId])
   @@index([status])
@@ -122,6 +125,7 @@ model Candidate {
   updatedAt      DateTime     @updatedAt
 
   matchResults   MatchResult[]
+  jobCandidates  JobCandidate[]
 
   @@index([organisationId])
   @@index([pinId])
@@ -181,6 +185,80 @@ model MatchResult {
   @@index([matchRunId])
   @@index([candidateId])
   @@index([aiScore(sort: Desc)])
+}
+
+// =============================================================================
+// RECRUITMENT PIPELINE — tracks candidates through stages per job
+// =============================================================================
+
+model JobCandidate {
+  id             String       @id @default(uuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  jobId          String
+  job            Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidateId    String
+  candidate      Candidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  matchResultId  String?      // if came from a match run
+
+  currentStage   PipelineStage @default(APPLIED)
+  assignedBy     String?       // recruiter name/email who last moved them
+  notes          String?       @db.Text
+  rejectionReason String?      @db.Text  // internal, never sent to candidate
+  withdrawnReason String?      @db.Text
+  offerDetails   Json?         // { salary, startDate, benefits, notes }
+
+  // Stage history — append-only log
+  stageHistory   Json          @default("[]") // [{ stage, movedBy, movedAt, notes }]
+
+  // Cached from match for quick display
+  matchScore     Int?
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  communications Communication[]
+
+  @@unique([jobId, candidateId])
+  @@index([organisationId])
+  @@index([jobId])
+  @@index([candidateId])
+  @@index([currentStage])
+}
+
+model Communication {
+  id              String       @id @default(uuid())
+  jobCandidateId  String
+  jobCandidate    JobCandidate @relation(fields: [jobCandidateId], references: [id], onDelete: Cascade)
+
+  channel         CommChannel  @default(EMAIL)
+  templateKey     String?      // which template was used
+  subject         String
+  body            String       @db.Text
+  sentTo          String?      // email address
+  sentBy          String?      // recruiter name
+  status          CommStatus   @default(DRAFT)
+
+  createdAt       DateTime     @default(now())
+
+  @@index([jobCandidateId])
+}
+
+model StageTemplate {
+  id             String       @id @default(uuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  stage          PipelineStage
+  name           String        // display name for this stage
+  emailSubject   String?       // template with {{variables}}
+  emailBody      String?       @db.Text  // template with {{variables}}
+  isActive       Boolean       @default(true)
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([organisationId, stage])
+  @@index([organisationId])
 }
 
 // =============================================================================
@@ -275,4 +353,29 @@ enum MatchRunStatus {
   ANALYZING
   COMPLETED
   FAILED
+}
+
+enum PipelineStage {
+  APPLIED
+  SCREENING
+  SHORTLISTED
+  PHONE_SCREEN
+  INTERVIEW
+  ASSESSMENT
+  FINAL_INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum CommChannel {
+  EMAIL
+  INTERNAL_NOTE
+}
+
+enum CommStatus {
+  DRAFT
+  SENT
+  COPIED
 }

@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { ConfigProvider } from "antd";
 import App from "./App";
 import "./styles/rs-theme.css";
+import "./styles/components/Pipeline.css";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

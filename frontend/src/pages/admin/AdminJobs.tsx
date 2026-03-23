@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Card, Tag, Button, Typography, Modal, Form, Input, Select, Space, InputNumber, message } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined } from "@ant-design/icons";
+import { Card, Tag, Button, Typography, Modal, Form, Input, Select, Space, InputNumber, message, Tooltip } from "antd";
+import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined, ProjectOutlined } from "@ant-design/icons";
 import { adminFetch } from "../../utils/api";
 import { useNavigate } from "react-router-dom";
 import DataTable, { DataTableColumn } from "../../components/shared/DataTable";
@@ -128,6 +128,7 @@ export default function AdminJobs() {
       title: "", key: "actions", width: 120,
       render: (_: unknown, record: Job) => (
         <Space size={4}>
+          <Tooltip title="Pipeline"><Button size="small" icon={<ProjectOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/${record.id}`); }} className="data-table__action-btn data-table__action-btn--view" /></Tooltip>
           <Button size="small" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); openEdit(record); }} className="data-table__action-btn data-table__action-btn--edit" />
           <Button size="small" icon={<CopyOutlined />} onClick={(e) => { e.stopPropagation(); cloneJob(record); }} className="data-table__action-btn data-table__action-btn--view" title="Clone" />
           <Button size="small" icon={<DeleteOutlined />} onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }} className="data-table__action-btn data-table__action-btn--delete" />

@@ -17,6 +17,7 @@ import {
   QuestionCircleOutlined,
   ShareAltOutlined,
   BarChartOutlined,
+  MailOutlined,
 } from "@ant-design/icons";
 import { clearAuth, getUserData, getSelectedOrg } from "../utils/api";
 
@@ -53,6 +54,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       type: "group" as const,
       children: [
         { key: "/admin/share-links", icon: <ShareAltOutlined />, label: "Share Links" },
+      ],
+    },
+    {
+      key: "grp-comms",
+      label: "Communications",
+      type: "group" as const,
+      children: [
+        { key: "/admin/stage-templates", icon: <MailOutlined />, label: "Email Templates" },
       ],
     },
     {

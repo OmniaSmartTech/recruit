@@ -8,6 +8,8 @@ import AdminCvBank from "./pages/admin/AdminCvBank";
 import AdminMatches from "./pages/admin/AdminMatches";
 import MatchDetail from "./pages/admin/MatchDetail";
 import AdminShareLinks from "./pages/admin/AdminShareLinks";
+import PipelineBoard from "./pages/admin/PipelineBoard";
+import AdminStageTemplates from "./pages/admin/AdminStageTemplates";
 import AdminScoringSettings from "./pages/admin/AdminScoringSettings";
 import AdminBranding from "./pages/admin/AdminBranding";
 import AdminPromptSettings from "./pages/admin/AdminPromptSettings";
@@ -67,6 +69,8 @@ export default function App() {
                 <Route path="/cv-bank" element={<AdminCvBank />} />
                 <Route path="/matches" element={<AdminMatches />} />
                 <Route path="/matches/:id" element={<MatchDetail />} />
+                <Route path="/pipeline/:id" element={<PipelineBoard />} />
+                <Route path="/stage-templates" element={<AdminStageTemplates />} />
                 <Route path="/share-links" element={<AdminShareLinks />} />
                 <Route path="/scoring" element={<AdminScoringSettings />} />
                 <Route path="/branding" element={<AdminBranding />} />
