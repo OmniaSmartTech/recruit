@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, Tag, Button, Typography, Modal, Form, Input, Select, Space, InputNumber, message, Tooltip } from "antd";
+import { Card, Tag, Button, Typography, Modal, Form, Input, Select, Space, InputNumber, message, Tooltip, Tabs, App, Row, Col } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined, ProjectOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { adminFetch } from "../../utils/api";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +17,7 @@ interface Job {
   workMode: string;
   experienceLevel: string | null;
   candidateCount?: number;
-  avgMatchScore?: number;
+  matchRunCount?: number;
   createdAt: string;
 }
 
@@ -28,6 +28,7 @@ export default function AdminJobs() {
   const [editing, setEditing] = useState<Job | null>(null);
   const [form] = Form.useForm();
   const navigate = useNavigate();
+  const { modal: antModal } = App.useApp();
 
   const loadJobs = () => {
     setLoading(true);
@@ -65,7 +66,7 @@ export default function AdminJobs() {
   };
 
   const runMatch = (jobId: string) => {
-    Modal.confirm({
+    antModal.confirm({
       title: "Run match?",
       content: "Pre-filter the CV bank and run AI analysis on top candidates.",
       okText: "Run Match",
@@ -74,17 +75,22 @@ export default function AdminJobs() {
           const result = await adminFetch(`/admin/match/${jobId}`, { method: "POST" });
           message.success(`${result.preFilterPassed} of ${result.totalCandidates} candidates matched`);
           navigate(`/admin/matches/${result.matchRunId}`);
-        } catch (err: any) {
-          message.error(err.message);
-        }
+        } catch (err: any) { message.error(err.message); }
       },
     });
   };
 
   const handleDelete = (id: string) => {
-    Modal.confirm({
-      title: "Delete this job?", content: "This cannot be undone.", okText: "Delete", okButtonProps: { danger: true },
-      onOk: async () => { await adminFetch(`/jobs/${id}`, { method: "DELETE" }); message.success("Deleted"); loadJobs(); },
+    antModal.confirm({
+      title: "Delete this job?",
+      content: "This will also remove all pipeline candidates for this job. This cannot be undone.",
+      okText: "Delete",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await adminFetch(`/jobs/${id}`, { method: "DELETE" });
+        message.success("Deleted");
+        loadJobs();
+      },
     });
   };
 
@@ -179,33 +185,89 @@ export default function AdminJobs() {
         />
       </Card>
 
-      <Modal title={editing ? "Edit Job" : "Create Job"} open={modalOpen} onCancel={() => { setModalOpen(false); setEditing(null); }} onOk={handleSubmit} width={700} okText={editing ? "Save" : "Create"}>
+      <Modal
+        title={editing ? "Edit Job" : "Create Job"}
+        open={modalOpen}
+        onCancel={() => { setModalOpen(false); setEditing(null); }}
+        onOk={handleSubmit}
+        width={700}
+        okText={editing ? "Save" : "Create"}
+      >
         <Form form={form} layout="vertical">
-          <Form.Item name="title" label="Job Title" rules={[{ required: true }]}><Input placeholder="e.g. Senior Software Engineer" /></Form.Item>
-          <Space style={{ width: "100%" }} size="middle">
-            <Form.Item name="department" label="Department" style={{ flex: 1 }}><Input placeholder="e.g. Engineering" /></Form.Item>
-            <Form.Item name="location" label="Location" style={{ flex: 1 }}><Input placeholder="e.g. London, UK" /></Form.Item>
-          </Space>
-          <Space style={{ width: "100%" }} size="middle">
-            <Form.Item name="workMode" label="Work Mode" style={{ flex: 1 }}>
-              <Select defaultValue="HYBRID" options={[{ value: "ONSITE", label: "On-site" }, { value: "REMOTE", label: "Remote" }, { value: "HYBRID", label: "Hybrid" }]} />
-            </Form.Item>
-            <Form.Item name="experienceLevel" label="Level" style={{ flex: 1 }}>
-              <Select allowClear placeholder="Select" options={[{ value: "Junior", label: "Junior" }, { value: "Mid", label: "Mid" }, { value: "Senior", label: "Senior" }, { value: "Lead", label: "Lead" }, { value: "Director", label: "Director" }]} />
-            </Form.Item>
-            <Form.Item name="status" label="Status" style={{ flex: 1 }}>
-              <Select defaultValue="OPEN" options={[{ value: "DRAFT", label: "Draft" }, { value: "OPEN", label: "Open" }, { value: "ON_HOLD", label: "On Hold" }, { value: "CLOSED", label: "Closed" }, { value: "FILLED", label: "Filled" }]} />
-            </Form.Item>
-          </Space>
-          <Form.Item name="description" label="Job Description" rules={[{ required: true }]}><TextArea rows={5} /></Form.Item>
-          <Form.Item name="mustHave" label="Must-Have Requirements (one per line)"><TextArea rows={3} /></Form.Item>
-          <Form.Item name="niceToHave" label="Nice-to-Have (one per line)"><TextArea rows={2} /></Form.Item>
-          <Space style={{ width: "100%" }} size="middle">
-            <Form.Item name="salaryMin" label="Salary Min" style={{ flex: 1 }}><InputNumber style={{ width: "100%" }} /></Form.Item>
-            <Form.Item name="salaryMax" label="Salary Max" style={{ flex: 1 }}><InputNumber style={{ width: "100%" }} /></Form.Item>
-            <Form.Item name="salaryCurrency" label="Currency" style={{ flex: 1 }}><Select defaultValue="GBP" options={[{ value: "GBP", label: "GBP" }, { value: "USD", label: "USD" }, { value: "EUR", label: "EUR" }]} /></Form.Item>
-          </Space>
-          <Form.Item name="teamNotes" label="Team & Culture Notes"><TextArea rows={2} /></Form.Item>
+          <Tabs
+            defaultActiveKey="details"
+            items={[
+              {
+                key: "details",
+                label: "Job Details",
+                children: (
+                  <>
+                    <Form.Item name="title" label="Job Title" rules={[{ required: true }]}>
+                      <Input placeholder="e.g. Senior Software Engineer" />
+                    </Form.Item>
+                    <Row gutter={16}>
+                      <Col span={8}><Form.Item name="department" label="Department"><Input placeholder="e.g. Engineering" /></Form.Item></Col>
+                      <Col span={8}><Form.Item name="location" label="Location"><Input placeholder="e.g. London, UK" /></Form.Item></Col>
+                      <Col span={8}>
+                        <Form.Item name="workMode" label="Work Mode">
+                          <Select defaultValue="HYBRID" options={[{ value: "ONSITE", label: "On-site" }, { value: "REMOTE", label: "Remote" }, { value: "HYBRID", label: "Hybrid" }]} />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Row gutter={16}>
+                      <Col span={8}>
+                        <Form.Item name="experienceLevel" label="Level">
+                          <Select allowClear placeholder="Select" options={[{ value: "Junior", label: "Junior" }, { value: "Mid", label: "Mid" }, { value: "Senior", label: "Senior" }, { value: "Lead", label: "Lead" }, { value: "Director", label: "Director" }]} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item name="status" label="Status">
+                          <Select defaultValue="OPEN" options={[{ value: "DRAFT", label: "Draft" }, { value: "OPEN", label: "Open" }, { value: "ON_HOLD", label: "On Hold" }, { value: "CLOSED", label: "Closed" }, { value: "FILLED", label: "Filled" }]} />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Form.Item name="description" label="Job Description" rules={[{ required: true }]}>
+                      <TextArea rows={5} />
+                    </Form.Item>
+                  </>
+                ),
+              },
+              {
+                key: "requirements",
+                label: "Requirements",
+                children: (
+                  <>
+                    <Form.Item name="mustHave" label="Must-Have Requirements (one per line)">
+                      <TextArea rows={5} placeholder="5+ years Python experience&#10;AWS certification&#10;Team leadership" />
+                    </Form.Item>
+                    <Form.Item name="niceToHave" label="Nice-to-Have (one per line)">
+                      <TextArea rows={4} placeholder="Kubernetes experience&#10;Public speaking" />
+                    </Form.Item>
+                  </>
+                ),
+              },
+              {
+                key: "compensation",
+                label: "Compensation & Culture",
+                children: (
+                  <>
+                    <Row gutter={16}>
+                      <Col span={8}><Form.Item name="salaryMin" label="Salary Min"><InputNumber placeholder="40000" /></Form.Item></Col>
+                      <Col span={8}><Form.Item name="salaryMax" label="Salary Max"><InputNumber placeholder="65000" /></Form.Item></Col>
+                      <Col span={8}>
+                        <Form.Item name="salaryCurrency" label="Currency">
+                          <Select defaultValue="GBP" options={[{ value: "GBP", label: "GBP" }, { value: "USD", label: "USD" }, { value: "EUR", label: "EUR" }]} />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Form.Item name="teamNotes" label="Team & Culture Notes">
+                      <TextArea rows={4} placeholder="Describe the team, working style, what makes this role special..." />
+                    </Form.Item>
+                  </>
+                ),
+              },
+            ]}
+          />
         </Form>
       </Modal>
     </div>
