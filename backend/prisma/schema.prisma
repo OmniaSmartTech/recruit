@@ -7,6 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// =============================================================================
+// ORGANISATION & AUTH
+// =============================================================================
+
 model Organisation {
   id           String   @id @default(uuid())
   aioneOrgId   Int?     @unique
@@ -21,57 +25,167 @@ model Organisation {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  pins           Pin[]
   jobs           Job[]
+  candidates     Candidate[]
+  matchRuns      MatchRun[]
   scoringConfig  ScoringConfig?
   promptTemplate PromptTemplate?
   shareLinks     ShareLink[]
 }
 
-model Job {
+model Pin {
   id             String       @id @default(uuid())
   organisationId String
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
-  title          String
-  department     String?
-  description    String       @db.Text
-  requirements   Json         // { mustHave: string[], niceToHave: string[] }
-  salaryRange    Json?        // { min: number, max: number, currency: string }
-  location       String?
-  workMode       WorkMode     @default(HYBRID)
-  experienceLevel String?     // "Junior", "Mid", "Senior", "Lead", "Director"
-  teamNotes      String?      @db.Text
-  status         JobStatus    @default(OPEN)
+  code           String       @unique
+  label          String       // e.g. "HR Team - Recruiter" or "Engineering Applicant Portal"
+  type           PinType      // RECRUITER or APPLICANT
+  jobId          String?      // optional: scope applicant PIN to a specific job
+  isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  candidates Candidate[]
+  candidates     Candidate[]  // candidates uploaded via this PIN (applicant PINs)
+  matchRuns      MatchRun[]   // matches triggered via this PIN (recruiter PINs)
+
+  @@index([organisationId])
+  @@index([code])
+}
+
+// =============================================================================
+// JOBS
+// =============================================================================
+
+model Job {
+  id              String       @id @default(uuid())
+  organisationId  String
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  title           String
+  department      String?
+  description     String       @db.Text
+  requirements    Json         // { mustHave: string[], niceToHave: string[] }
+  salaryRange     Json?        // { min: number, max: number, currency: string }
+  location        String?
+  workMode        WorkMode     @default(HYBRID)
+  experienceLevel String?      // "Junior", "Mid", "Senior", "Lead", "Director"
+  teamNotes       String?      @db.Text
+  status          JobStatus    @default(OPEN)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  matchRuns MatchRun[]
 
   @@index([organisationId])
   @@index([status])
 }
 
+// =============================================================================
+// CANDIDATES (CV BANK) — PII stored here, never sent to AI
+// =============================================================================
+
 model Candidate {
-  id             String          @id @default(uuid())
+  id             String       @id @default(uuid())
   organisationId String
-  jobId          String
-  job            Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  pinId          String?      // which PIN was used to upload (null = admin upload)
+  pin            Pin?         @relation(fields: [pinId], references: [id])
+
+  // PII fields — NEVER sent to AI
   name           String
   email          String?
   phone          String?
-  cvFileKey      String?         // S3 key for original CV
-  cvFileName     String?
-  cvText         String?         @db.Text
-  status         CandidateStatus @default(NEW)
-  analysis       Json?           // Full AI analysis result
-  matchScore     Int?            // 0-100
-  analyisStatus  AnalysisStatus  @default(PENDING)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  currentRole    String?
+  currentCompany String?
+  noticePeriod   String?
+  rightToWork    String?
+  linkedinUrl    String?
+  portfolioUrl   String?
+  desiredSalary  Json?        // { min: number, max: number, currency: string }
+  workPreference WorkMode?
 
-  @@index([jobId])
+  // CV storage
+  cvFileKey      String?      // S3 key for original CV (encrypted)
+  cvFileName     String?
+
+  // Anonymised profile — extracted from CV, PII stripped, THIS is what AI sees
+  profile        Json?        // AnonymisedProfile structure (see services/anonymiser.js)
+
+  // Applicant form fields (structured, also feeds into profile)
+  skills         String[]     // e.g. ["React", "Node.js", "AWS"]
+  yearsExp       Int?
+  education      Json?        // [{ level, field, classification }]
+  certifications String[]
+
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  matchResults   MatchResult[]
+
   @@index([organisationId])
-  @@index([matchScore(sort: Desc)])
+  @@index([pinId])
 }
+
+// =============================================================================
+// MATCHING — Two-stage: pre-filter then AI
+// =============================================================================
+
+model MatchRun {
+  id             String       @id @default(uuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  jobId          String
+  job            Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  pinId          String?      // which recruiter PIN triggered this
+  pin            Pin?         @relation(fields: [pinId], references: [id])
+  triggeredBy    String?      // "pin" or "admin"
+
+  // Pre-filter config
+  preFilterCount Int          @default(50) // how many to send to AI
+  totalCandidates Int         @default(0)  // total in CV bank at time of run
+
+  status         MatchRunStatus @default(PENDING)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime     @default(now())
+
+  results        MatchResult[]
+
+  @@index([organisationId])
+  @@index([jobId])
+}
+
+model MatchResult {
+  id             String       @id @default(uuid())
+  matchRunId     String
+  matchRun       MatchRun     @relation(fields: [matchRunId], references: [id], onDelete: Cascade)
+  candidateId    String
+  candidate      Candidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Stage 1: pre-filter score (keyword matching, no AI)
+  preFilterScore Int          @default(0)
+  passedPreFilter Boolean     @default(false)
+
+  // Stage 2: AI analysis (only for candidates that passed pre-filter)
+  aiScore        Int?         // 0-100 match score from Claude
+  analysis       Json?        // Full anonymised AI analysis result
+  analysisStatus AnalysisStatus @default(PENDING)
+
+  // Recruiter actions
+  status         CandidateStatus @default(NEW)
+
+  createdAt      DateTime     @default(now())
+
+  @@unique([matchRunId, candidateId])
+  @@index([matchRunId])
+  @@index([candidateId])
+  @@index([aiScore(sort: Desc)])
+}
+
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
 
 model ScoringConfig {
   id                    String       @id @default(uuid())
@@ -81,7 +195,8 @@ model ScoringConfig {
   weightExperience      Int          @default(30)
   weightQualifications  Int          @default(20)
   weightCulturalFit     Int          @default(15)
-  customCriteria        Json?        // Additional org-specific scoring criteria
+  preFilterTopN         Int          @default(50) // how many candidates pass to AI stage
+  customCriteria        Json?
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
 }
@@ -91,7 +206,7 @@ model PromptTemplate {
   organisationId     String       @unique
   organisation       Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   companyRole        String?      @db.Text
-  assessmentFocus    String?      @db.Text // What to prioritise in assessments
+  assessmentFocus    String?      @db.Text
   languagePrefs      String?      @default("british")
   customInstructions String?      @db.Text
   createdAt          DateTime     @default(now())
@@ -103,8 +218,9 @@ model ShareLink {
   organisationId String
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   code           String       @unique
-  label          String       // e.g. "John - Engineering Manager"
-  jobId          String?      // optional: scope to specific job
+  label          String
+  jobId          String?
+  matchRunId     String?      // optional: scope to a specific match run
   isActive       Boolean      @default(true)
   expiresAt      DateTime?
   createdAt      DateTime     @default(now())
@@ -112,6 +228,15 @@ model ShareLink {
 
   @@index([organisationId])
   @@index([code])
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum PinType {
+  RECRUITER
+  APPLICANT
 }
 
 enum JobStatus {
@@ -139,6 +264,14 @@ enum CandidateStatus {
 
 enum AnalysisStatus {
   PENDING
+  ANALYZING
+  COMPLETED
+  FAILED
+}
+
+enum MatchRunStatus {
+  PENDING
+  PRE_FILTERING
   ANALYZING
   COMPLETED
   FAILED

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Input, Button, Typography, Divider, Alert } from "antd";
-import { ArrowLeftOutlined, ShareAltOutlined, LoginOutlined } from "@ant-design/icons";
-import { setShareCode } from "../utils/api";
+import { ArrowLeftOutlined, KeyOutlined, LoginOutlined } from "@ant-design/icons";
+import { setPin, setPinType } from "../utils/api";
 
 const { Text } = Typography;
 
-export default function ShareEntry() {
+export default function PinEntry() {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ export default function ShareEntry() {
     setError(null);
 
     try {
-      const res = await fetch("/api/share/validate", {
+      const res = await fetch("/api/pin/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: code.trim().toUpperCase() }),
@@ -26,12 +26,20 @@ export default function ShareEntry() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error || "Invalid share code");
+        setError(data.error || "Invalid PIN code");
         return;
       }
 
-      setShareCode(code.trim().toUpperCase());
-      navigate("/shared");
+      const data = await res.json();
+      setPin(code.trim().toUpperCase());
+      setPinType(data.type);
+
+      // Route based on PIN type
+      if (data.type === "APPLICANT") {
+        navigate("/apply");
+      } else {
+        navigate("/recruit");
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -69,23 +77,17 @@ export default function ShareEntry() {
             type="secondary"
             style={{ display: "block", marginBottom: 16, fontSize: 14 }}
           >
-            Enter your share code to view candidates
+            Enter your PIN to continue
           </Text>
 
           <Input
             size="large"
-            placeholder="Enter code"
+            placeholder="Enter PIN"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             onPressEnter={handleSubmit}
-            prefix={<ShareAltOutlined />}
-            style={{
-              fontSize: 18,
-              letterSpacing: 4,
-              textAlign: "center",
-              height: 56,
-              borderRadius: 8,
-            }}
+            prefix={<KeyOutlined />}
+            className="pin-input"
           />
 
           <Button
@@ -94,14 +96,9 @@ export default function ShareEntry() {
             block
             loading={loading}
             onClick={handleSubmit}
-            style={{
-              marginTop: 16,
-              height: 48,
-              fontWeight: 600,
-              borderRadius: 8,
-            }}
+            className="pin-submit-btn"
           >
-            View Candidates
+            Continue
           </Button>
 
           <Divider style={{ margin: "16px 0" }} />
@@ -112,11 +109,7 @@ export default function ShareEntry() {
             type="link"
             icon={<LoginOutlined />}
             onClick={() => navigate("/admin/login")}
-            style={{
-              height: 44,
-              fontWeight: 500,
-              color: "#8c8c8c",
-            }}
+            style={{ height: 44, fontWeight: 500, color: "#8c8c8c" }}
           >
             Admin Login
           </Button>
@@ -128,9 +121,7 @@ export default function ShareEntry() {
             <span className="footer-separator">|</span>
             <a href="https://aione.uk/terms">Terms</a>
             <span className="footer-separator">|</span>
-            <a href="https://fix.aione.uk/public/submit?product=recruitsmart">
-              Support
-            </a>
+            <a href="https://fix.aione.uk/public/submit?product=recruitsmart">Support</a>
           </div>
         </div>
       </div>

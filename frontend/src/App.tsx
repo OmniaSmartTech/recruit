@@ -3,15 +3,20 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import AuthCallback from "./pages/AuthCallback";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminJobs from "./pages/admin/AdminJobs";
-import JobDetail from "./pages/admin/JobDetail";
-import CandidateReport from "./pages/admin/CandidateReport";
+import AdminPins from "./pages/admin/AdminPins";
+import AdminCvBank from "./pages/admin/AdminCvBank";
+import AdminMatches from "./pages/admin/AdminMatches";
+import MatchDetail from "./pages/admin/MatchDetail";
 import AdminShareLinks from "./pages/admin/AdminShareLinks";
 import AdminScoringSettings from "./pages/admin/AdminScoringSettings";
 import AdminBranding from "./pages/admin/AdminBranding";
 import AdminPromptSettings from "./pages/admin/AdminPromptSettings";
 import OrgSelector from "./pages/admin/OrgSelector";
 import AdminLayout from "./components/AdminLayout";
-import ShareEntry from "./pages/ShareEntry";
+import PinEntry from "./pages/PinEntry";
+import ApplicantForm from "./pages/ApplicantForm";
+import RecruiterDashboard from "./pages/RecruiterDashboard";
+import RecruiterMatchResults from "./pages/RecruiterMatchResults";
 import SharedView from "./pages/SharedView";
 import { getAccessToken, getSelectedOrg, getShareCode } from "./utils/api";
 
@@ -29,21 +34,23 @@ function ShareGuard({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Routes>
-      {/* Public - share code entry */}
-      <Route path="/" element={<ShareEntry />} />
+      {/* Public - PIN entry (routes to applicant or recruiter based on PIN type) */}
+      <Route path="/" element={<PinEntry />} />
+
+      {/* Applicant flow (APPLICANT PIN) */}
+      <Route path="/apply" element={<ApplicantForm />} />
+
+      {/* Recruiter flow (RECRUITER PIN) */}
+      <Route path="/recruit" element={<RecruiterDashboard />} />
+      <Route path="/recruit/match/:id" element={<RecruiterMatchResults />} />
+
+      {/* Share link flow */}
+      <Route path="/shared" element={
+        <ShareGuard><SharedView /></ShareGuard>
+      } />
 
       {/* SSO callback */}
       <Route path="/auth/callback" element={<AuthCallback />} />
-
-      {/* Share link protected routes (hiring managers) */}
-      <Route
-        path="/shared"
-        element={
-          <ShareGuard>
-            <SharedView />
-          </ShareGuard>
-        }
-      />
 
       {/* Admin routes */}
       <Route path="/admin/login" element={<AdminLogin />} />
@@ -56,8 +63,10 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<AdminDashboard />} />
                 <Route path="/jobs" element={<AdminJobs />} />
-                <Route path="/jobs/:id" element={<JobDetail />} />
-                <Route path="/candidates/:id" element={<CandidateReport />} />
+                <Route path="/pins" element={<AdminPins />} />
+                <Route path="/cv-bank" element={<AdminCvBank />} />
+                <Route path="/matches" element={<AdminMatches />} />
+                <Route path="/matches/:id" element={<MatchDetail />} />
                 <Route path="/share-links" element={<AdminShareLinks />} />
                 <Route path="/scoring" element={<AdminScoringSettings />} />
                 <Route path="/branding" element={<AdminBranding />} />

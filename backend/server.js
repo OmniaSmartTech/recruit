@@ -3,6 +3,9 @@ const express = require("express");
 const cors = require("cors");
 const { PrismaClient } = require("@prisma/client");
 
+const pinRoutes = require("./routes/pin");
+const applicantRoutes = require("./routes/applicant");
+const recruiterRoutes = require("./routes/recruiter");
 const jobRoutes = require("./routes/job");
 const candidateRoutes = require("./routes/candidate");
 const adminRoutes = require("./routes/admin");
@@ -19,6 +22,9 @@ app.use(express.json({ limit: "20mb" }));
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
 // Routes
+app.use("/api/pin", pinRoutes);
+app.use("/api/applicant", applicantRoutes);
+app.use("/api/recruiter", recruiterRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/candidates", candidateRoutes);
 app.use("/api/admin", adminRoutes);

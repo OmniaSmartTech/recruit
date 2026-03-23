@@ -1,30 +1,44 @@
 const Anthropic = require("@anthropic-ai/sdk").default;
 const { PrismaClient } = require("@prisma/client");
-const { buildPrompt } = require("./promptBuilder");
+const { buildMatchPrompt } = require("./promptBuilder");
 
 const prisma = new PrismaClient();
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 /**
- * Analyse a candidate's CV against a job spec using Claude.
- * Runs in background — updates candidate record when done.
+ * Stage 2: AI Analysis
+ *
+ * Analyses anonymised candidate profiles against a job spec.
+ * NEVER receives PII — only candidateId + skills/experience/education.
+ *
+ * Processes candidates in batches for efficiency.
  */
-async function analyzeCandidate(candidateId) {
+
+/**
+ * Analyse a single candidate (by MatchResult ID) against a job.
+ * Uses anonymised profile only.
+ */
+async function analyzeMatchResult(matchResultId) {
   try {
-    await prisma.candidate.update({
-      where: { id: candidateId },
-      data: { analyisStatus: "ANALYZING" },
+    await prisma.matchResult.update({
+      where: { id: matchResultId },
+      data: { analysisStatus: "ANALYZING" },
     });
 
-    const candidate = await prisma.candidate.findUnique({
-      where: { id: candidateId },
+    const result = await prisma.matchResult.findUnique({
+      where: { id: matchResultId },
       include: {
-        job: {
+        candidate: true,
+        matchRun: {
           include: {
-            organisation: {
+            job: {
               include: {
-                scoringConfig: true,
-                promptTemplate: true,
+                organisation: {
+                  include: {
+                    scoringConfig: true,
+                    promptTemplate: true,
+                  },
+                },
               },
             },
           },
@@ -32,99 +46,90 @@ async function analyzeCandidate(candidateId) {
       },
     });
 
-    if (!candidate || !candidate.cvText) {
-      throw new Error("Candidate or CV text not found");
+    if (!result?.candidate?.profile) {
+      throw new Error("Candidate profile not found");
     }
 
-    const { job } = candidate;
+    const { job } = result.matchRun;
     const org = job.organisation;
-    const prompt = buildPrompt(candidate, job, org);
+    const profile = result.candidate.profile;
+
+    const prompt = buildMatchPrompt(profile, job, org);
 
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 8192,
+      max_tokens: 4096,
       messages: [{ role: "user", content: prompt }],
     });
 
     const text = response.content[0].text;
-
-    // Extract JSON from response
-    let analysis;
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      analysis = JSON.parse(jsonMatch[0]);
-    } else {
-      throw new Error("Failed to parse AI response as JSON");
-    }
+    if (!jsonMatch) throw new Error("Failed to parse AI response");
 
-    const matchScore = Math.min(100, Math.max(0, Math.round(analysis.matchScore || 0)));
+    const analysis = JSON.parse(jsonMatch[0]);
+    const aiScore = Math.min(100, Math.max(0, Math.round(analysis.matchScore || 0)));
 
-    await prisma.candidate.update({
-      where: { id: candidateId },
+    await prisma.matchResult.update({
+      where: { id: matchResultId },
       data: {
+        aiScore,
         analysis,
-        matchScore,
-        analyisStatus: "COMPLETED",
+        analysisStatus: "COMPLETED",
       },
     });
 
-    console.log(`[analyzer] Candidate ${candidateId} scored ${matchScore}/100`);
+    console.log(`[analyzer] Result ${matchResultId} scored ${aiScore}/100`);
   } catch (err) {
-    console.error(`[analyzer] Failed for candidate ${candidateId}:`, err);
-    await prisma.candidate.update({
-      where: { id: candidateId },
-      data: { analyisStatus: "FAILED" },
+    console.error(`[analyzer] Failed for result ${matchResultId}:`, err);
+    await prisma.matchResult.update({
+      where: { id: matchResultId },
+      data: { analysisStatus: "FAILED" },
     });
   }
 }
 
 /**
- * Generate interview questions tailored to a candidate's gaps.
+ * Run a full match: pre-filter then AI analysis.
  */
-async function generateInterviewQuestions(candidateId) {
-  const candidate = await prisma.candidate.findUnique({
-    where: { id: candidateId },
-    include: { job: true },
-  });
+async function runMatchAnalysis(matchRunId) {
+  try {
+    const matchRun = await prisma.matchRun.findUnique({
+      where: { id: matchRunId },
+      include: { results: true },
+    });
 
-  if (!candidate?.analysis) return null;
+    if (!matchRun) throw new Error("MatchRun not found");
 
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 4096,
-    messages: [{
-      role: "user",
-      content: `You are an expert interviewer. Based on the following candidate analysis for the role "${candidate.job.title}", generate targeted interview questions.
+    await prisma.matchRun.update({
+      where: { id: matchRunId },
+      data: { status: "ANALYZING", startedAt: new Date() },
+    });
 
-CANDIDATE ANALYSIS:
-${JSON.stringify(candidate.analysis, null, 2)}
+    // Get all results that passed pre-filter
+    const toAnalyze = matchRun.results.filter((r) => r.passedPreFilter);
 
-JOB REQUIREMENTS:
-${JSON.stringify(candidate.job.requirements, null, 2)}
+    console.log(`[analyzer] Analyzing ${toAnalyze.length} candidates for run ${matchRunId}`);
 
-Generate a JSON object with this structure:
-{
-  "technicalQuestions": [
-    { "question": "...", "purpose": "What this probes", "lookFor": "Good answer indicators" }
-  ],
-  "behaviouralQuestions": [
-    { "question": "...", "purpose": "...", "lookFor": "..." }
-  ],
-  "gapProbing": [
-    { "question": "...", "gap": "Which gap this addresses", "lookFor": "..." }
-  ],
-  "culturalFit": [
-    { "question": "...", "purpose": "...", "lookFor": "..." }
-  ]
+    // Process in batches of 5 (parallel within batch)
+    const batchSize = 5;
+    for (let i = 0; i < toAnalyze.length; i += batchSize) {
+      const batch = toAnalyze.slice(i, i + batchSize);
+      await Promise.all(batch.map((r) => analyzeMatchResult(r.id)));
+    }
+
+    await prisma.matchRun.update({
+      where: { id: matchRunId },
+      data: { status: "COMPLETED", completedAt: new Date() },
+    });
+
+    console.log(`[analyzer] Match run ${matchRunId} complete`);
+  } catch (err) {
+    console.error(`[analyzer] Match run ${matchRunId} failed:`, err);
+    await prisma.matchRun.update({
+      where: { id: matchRunId },
+      data: { status: "FAILED" },
+    });
+  }
 }
 
-Generate 3-4 questions per category. Return ONLY valid JSON.`,
-    }],
-  });
-
-  const text = response.content[0].text;
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-}
-
-module.exports = { analyzeCandidate, generateInterviewQuestions };
+module.exports = { analyzeMatchResult, runMatchAnalysis };
