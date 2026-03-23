@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, Typography, Tag, Button, Space, Spin, Progress, Select, Row, Col, Statistic, Empty } from "antd";
+import { Card, Typography, Tag, Button, Space, Spin, Progress, Select, Row, Col, Statistic, Empty, Tooltip, App } from "antd";
 import { ArrowLeftOutlined, UserOutlined, CheckCircleOutlined, WarningOutlined, TrophyOutlined } from "@ant-design/icons";
 import { getPin, pinFetch } from "../utils/api";
 import DataTable, { DataTableColumn } from "../components/shared/DataTable";
@@ -139,7 +139,12 @@ export default function RecruiterMatchResults() {
                         {Object.entries(a.scoreBreakdown).map(([key, val]: [string, any]) => (
                           <Col xs={6} key={key} style={{ textAlign: "center" }}>
                             <Progress type="circle" percent={val.score} size={60} strokeColor={scoreColor(val.score)} format={(p) => `${p}`} />
-                            <div style={{ marginTop: 4, textTransform: "capitalize", fontSize: 12 }}>{key}</div>
+                            <div style={{ marginTop: 4, textTransform: "capitalize", fontSize: 12, fontWeight: 500 }}>{key}</div>
+                            {val.reasoning && (
+                              <Tooltip title={val.reasoning}>
+                                <div style={{ fontSize: 10, color: "#999", lineHeight: "14px", marginTop: 4, cursor: "help", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{val.reasoning}</div>
+                              </Tooltip>
+                            )}
                           </Col>
                         ))}
                       </Row>
@@ -150,6 +155,17 @@ export default function RecruiterMatchResults() {
                     {a.gaps?.map((g: any, i: number) => (
                       <div key={i}><WarningOutlined style={{ color: "#f59e0b", marginRight: 4 }} /><Tag color={g.severity === "HIGH" ? "red" : "orange"}>{g.severity}</Tag> {g.area}: {g.detail}</div>
                     ))}
+                    {a.mustHaveChecklist?.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <Text strong>Requirements:</Text>
+                        {a.mustHaveChecklist.map((item: any, i: number) => (
+                          <div key={i}>
+                            {item.met ? <CheckCircleOutlined style={{ color: "#10b981", marginRight: 4 }} /> : <span style={{ color: "#ef4444", marginRight: 4 }}>✗</span>}
+                            {item.requirement} {item.evidence && <Text type="secondary" style={{ fontSize: 11 }}>— {item.evidence}</Text>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               },
