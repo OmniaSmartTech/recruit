@@ -126,11 +126,22 @@ router.post("/upload", upload.single("cv"), async (req, res) => {
 
     if (req.file) {
       cvFileName = req.file.originalname;
-      cvText = await parseCv(req.file.buffer, cvFileName);
+      try {
+        cvText = await parseCv(req.file.buffer, cvFileName);
+      } catch (parseErr) {
+        console.error("[applicant] CV parse failed:", parseErr.message);
+        // Continue without CV text — form data still works
+      }
 
-      const s3Key = `recruitsmart/${req.pin.organisationId}/cvs/${candidateId}-${cvFileName}`;
-      await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
-      cvFileKey = s3Key;
+      // S3 upload — optional, don't fail the whole request if it errors
+      try {
+        const s3Key = `recruitsmart/${req.pin.organisationId}/cvs/${candidateId}-${cvFileName}`;
+        await uploadFile(s3Key, req.file.buffer, req.file.mimetype);
+        cvFileKey = s3Key;
+      } catch (s3Err) {
+        console.error("[applicant] S3 upload failed (non-blocking):", s3Err.message);
+        // CV still parsed, just not stored in S3
+      }
     }
 
     // Build form data for profile extraction
