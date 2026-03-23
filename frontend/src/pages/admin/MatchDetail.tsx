@@ -134,12 +134,12 @@ export default function MatchDetail() {
                   {a.scoreBreakdown && (
                     <Row gutter={16} style={{ marginBottom: 16 }}>
                       {Object.entries(a.scoreBreakdown).map(([key, val]: [string, any]) => (
-                        <Col xs={6} key={key} style={{ textAlign: "center", overflow: "hidden" }}>
+                        <Col xs={6} key={key} style={{ textAlign: "center" }}>
                           <Progress type="circle" percent={val.score} size={60} strokeColor={scoreColor(val.score)} format={(p) => `${p}`} />
                           <div style={{ marginTop: 4, textTransform: "capitalize", fontSize: 12, fontWeight: 500 }}>{key}</div>
                           {val.reasoning && (
                             <Tooltip title={val.reasoning}>
-                              <Text type="secondary" style={{ fontSize: 10, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.3, marginTop: 4, cursor: "help" }}>{val.reasoning}</Text>
+                              <div style={{ fontSize: 10, color: "#999", lineHeight: "14px", marginTop: 4, cursor: "help", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{val.reasoning}</div>
                             </Tooltip>
                           )}
                         </Col>
