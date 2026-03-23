@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const { PrismaClient } = require("@prisma/client");
 const { auth } = require("../middleware/auth");
-const { uploadFile } = require("../utils/s3");
+const { uploadFile, getDownloadUrl } = require("../utils/s3");
 const { preFilterCandidates } = require("../services/preFilter");
 const { runMatchAnalysis } = require("../services/analyzer");
 const { v4: uuidv4 } = require("uuid");
@@ -143,12 +143,23 @@ router.get("/candidates", async (req, res) => {
         skills: true,
         yearsExp: true,
         cvFileName: true,
+        cvFileKey: true,
         isActive: true,
         createdAt: true,
         pin: { select: { label: true, type: true } },
       },
     });
-    res.json(candidates);
+
+    // Generate download URLs for CVs
+    const enriched = await Promise.all(candidates.map(async (c) => {
+      let cvDownloadUrl = null;
+      if (c.cvFileKey) {
+        cvDownloadUrl = await getDownloadUrl(c.cvFileKey);
+      }
+      return { ...c, cvDownloadUrl };
+    }));
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch candidates" });
   }

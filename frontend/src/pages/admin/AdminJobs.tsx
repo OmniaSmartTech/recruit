@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, Tag, Button, Typography, Modal, Form, Input, Select, Space, InputNumber, message, Tooltip } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined, ProjectOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined, ProjectOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { adminFetch } from "../../utils/api";
 import { useNavigate } from "react-router-dom";
 import DataTable, { DataTableColumn } from "../../components/shared/DataTable";
@@ -64,6 +64,23 @@ export default function AdminJobs() {
     } catch (err: any) { if (!err.errorFields) message.error(err.message); }
   };
 
+  const runMatch = (jobId: string) => {
+    Modal.confirm({
+      title: "Run match?",
+      content: "Pre-filter the CV bank and run AI analysis on top candidates.",
+      okText: "Run Match",
+      onOk: async () => {
+        try {
+          const result = await adminFetch(`/admin/match/${jobId}`, { method: "POST" });
+          message.success(`${result.preFilterPassed} of ${result.totalCandidates} candidates matched`);
+          navigate(`/admin/matches/${result.matchRunId}`);
+        } catch (err: any) {
+          message.error(err.message);
+        }
+      },
+    });
+  };
+
   const handleDelete = (id: string) => {
     Modal.confirm({
       title: "Delete this job?", content: "This cannot be undone.", okText: "Delete", okButtonProps: { danger: true },
@@ -125,9 +142,10 @@ export default function AdminJobs() {
       render: (d: string) => new Date(d).toLocaleDateString(),
     },
     {
-      title: "", key: "actions", width: 120,
+      title: "", key: "actions", width: 160,
       render: (_: unknown, record: Job) => (
         <Space size={4}>
+          <Tooltip title="Run Match"><Button size="small" icon={<ThunderboltOutlined />} onClick={(e) => { e.stopPropagation(); runMatch(record.id); }} className="data-table__action-btn data-table__action-btn--edit" /></Tooltip>
           <Tooltip title="Pipeline"><Button size="small" icon={<ProjectOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/admin/pipeline/${record.id}`); }} className="data-table__action-btn data-table__action-btn--view" /></Tooltip>
           <Button size="small" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); openEdit(record); }} className="data-table__action-btn data-table__action-btn--edit" />
           <Button size="small" icon={<CopyOutlined />} onClick={(e) => { e.stopPropagation(); cloneJob(record); }} className="data-table__action-btn data-table__action-btn--view" title="Clone" />

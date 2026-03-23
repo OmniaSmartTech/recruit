@@ -33,6 +33,19 @@ app.use("/api/auth", authRoutes);
 app.use("/api/share", shareRoutes);
 app.use("/api/pipeline", pipelineRoutes);
 
+// File serving (local dev fallback when S3 not configured)
+const { readFile: readStoredFile } = require("./utils/s3");
+app.get("/api/files/:key(*)", async (req, res) => {
+  try {
+    const file = await readStoredFile(req.params.key);
+    if (!file) return res.status(404).json({ error: "File not found" });
+    res.setHeader("Content-Type", file.contentType);
+    res.send(file.buffer);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to read file" });
+  }
+});
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);

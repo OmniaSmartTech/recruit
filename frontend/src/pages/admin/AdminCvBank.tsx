@@ -14,6 +14,7 @@ interface CandidateRow {
   skills: string[];
   yearsExp: number | null;
   cvFileName: string | null;
+  cvDownloadUrl: string | null;
   isActive: boolean;
   createdAt: string;
   pin: { label: string; type: string } | null;
@@ -76,7 +77,17 @@ export default function AdminCvBank() {
         return "lead";
       },
     },
-    { title: "CV File", dataIndex: "cvFileName", key: "cvFileName", width: 150 },
+    {
+      title: "CV File", dataIndex: "cvFileName", key: "cvFileName", width: 150,
+      render: (name: string, record: CandidateRow) =>
+        name ? (
+          record.cvDownloadUrl ? (
+            <a href={record.cvDownloadUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+              {name}
+            </a>
+          ) : name
+        ) : "—",
+    },
     {
       title: "Source",
       key: "source",
