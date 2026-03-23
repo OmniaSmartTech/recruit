@@ -1,0 +1,196 @@
+/* =============================================================================
+   RECRUITSMART (RS) THEME
+   Coral Red color scheme for RecruitSmart product
+   ============================================================================= */
+
+.rs-theme,
+[data-theme="rs"] {
+  --theme-primary: #e74c3c;
+  --theme-primary-hover: #d44332;
+  --theme-primary-active: #c0392b;
+  --theme-primary-dark: #a93226;
+  --theme-primary-light: #fde8e6;
+  --theme-primary-lighter: #fef5f4;
+  --theme-primary-bg: rgba(231, 76, 60, 0.08);
+  --theme-primary-bg-hover: rgba(231, 76, 60, 0.1);
+  --theme-primary-bg-active: rgba(231, 76, 60, 0.15);
+
+  --theme-primary-rgb: 231, 76, 60;
+
+  --theme-header-bg: #f8f9fa;
+  --theme-header-text: #343a40;
+  --theme-header-border: #e9ecef;
+
+  --theme-sidebar-bg: #ffffff;
+  --theme-sidebar-text: #4b5563;
+  --theme-sidebar-icon: #6b7280;
+  --theme-sidebar-border: #e5e7eb;
+  --theme-sidebar-item-hover-bg: rgba(231, 76, 60, 0.08);
+  --theme-sidebar-item-selected-bg: rgba(231, 76, 60, 0.1);
+  --theme-sidebar-item-selected-text: #e74c3c;
+
+  --theme-gradient-start: #e74c3c;
+  --theme-gradient-end: #d44332;
+  --theme-gradient: linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%);
+
+  --theme-table-row-hover: #fef5f4;
+  --theme-table-row-selected: #fde8e6;
+
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f8fafc;
+  --bg-muted: #f5f5f5;
+  --bg-hover: #f0f0f0;
+
+  --border-color: #e5e7eb;
+  --border-color-light: #f0f0f0;
+  --border-color-dark: #d1d5db;
+
+  --text-primary: #374151;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --text-dark: #1e293b;
+  --text-heading: #343a40;
+
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+  --color-warning: #f59e0b;
+  --color-warning-light: #fef3c7;
+  --color-danger: #ef4444;
+  --color-danger-light: #fee2e2;
+  --color-danger-text: #d32029;
+  --color-info: #3b82f6;
+
+  --header-height: 64px;
+  --sidebar-width: 240px;
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 999px;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}
+
+/* Ant Design overrides */
+.rs-theme .ant-btn-primary,
+[data-theme="rs"] .ant-btn-primary {
+  background-color: var(--theme-primary) !important;
+  border-color: var(--theme-primary) !important;
+}
+
+.rs-theme .ant-btn-primary:hover,
+[data-theme="rs"] .ant-btn-primary:hover {
+  background-color: var(--theme-primary-hover) !important;
+  border-color: var(--theme-primary-hover) !important;
+}
+
+.rs-theme .ant-btn-primary:active,
+[data-theme="rs"] .ant-btn-primary:active {
+  background-color: var(--theme-primary-active) !important;
+  border-color: var(--theme-primary-active) !important;
+}
+
+.rs-theme a { color: var(--theme-primary); }
+.rs-theme a:hover { color: var(--theme-primary-hover); }
+
+.rs-theme .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--theme-primary) !important;
+  border-color: var(--theme-primary) !important;
+}
+
+.rs-theme .ant-switch-checked {
+  background-color: var(--theme-primary) !important;
+}
+
+.rs-theme .ant-tabs-tab-active .ant-tabs-tab-btn { color: var(--theme-primary) !important; }
+.rs-theme .ant-tabs-ink-bar { background-color: var(--theme-primary) !important; }
+
+.rs-theme .ant-input:focus,
+.rs-theme .ant-input-focused,
+.rs-theme .ant-input-affix-wrapper:focus,
+.rs-theme .ant-input-affix-wrapper-focused {
+  border-color: var(--theme-primary) !important;
+  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2) !important;
+}
+
+.rs-theme .ant-input:not(.ant-input-disabled):hover,
+.rs-theme .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled):hover {
+  border-color: var(--theme-primary) !important;
+}
+
+.rs-theme .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: var(--theme-primary) !important;
+}
+
+.rs-theme .ant-select-focused .ant-select-selector,
+.rs-theme .ant-select-open .ant-select-selector {
+  border-color: var(--theme-primary) !important;
+  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2) !important;
+}
+
+.rs-theme .ant-pagination-item-active {
+  border-color: var(--theme-primary) !important;
+}
+.rs-theme .ant-pagination-item-active a {
+  color: var(--theme-primary) !important;
+}
+
+.rs-theme .ant-progress-bg {
+  background-color: var(--theme-primary) !important;
+}
+
+.rs-theme .ant-spin-dot-item {
+  background-color: var(--theme-primary) !important;
+}
+
+.rs-theme .ant-steps-item-process .ant-steps-item-icon {
+  background-color: var(--theme-primary) !important;
+  border-color: var(--theme-primary) !important;
+}
+
+.rs-theme .ant-steps-item-finish .ant-steps-item-icon {
+  border-color: var(--theme-primary) !important;
+}
+
+.rs-theme .ant-steps-item-finish .ant-steps-item-icon > .ant-steps-icon {
+  color: var(--theme-primary) !important;
+}
+
+.ant-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: rgba(231, 76, 60, 0.1) !important;
+}
+
+.ant-select-dropdown .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: rgba(231, 76, 60, 0.15) !important;
+  color: #e74c3c !important;
+}
+
+:root body:has(.rs-theme) .ant-modal .ant-btn-primary {
+  background-color: #e74c3c !important;
+  border-color: #e74c3c !important;
+}
+
+:root body:has(.rs-theme) .ant-modal .ant-btn-primary:hover {
+  background-color: #d44332 !important;
+  border-color: #d44332 !important;
+}
+
+.rs-theme .ant-table-tbody > tr:hover > td {
+  background: var(--theme-table-row-hover) !important;
+}

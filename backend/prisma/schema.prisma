@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organisation {
+  id           String   @id @default(uuid())
+  aioneOrgId   Int?     @unique
+  name         String
+  slug         String   @unique
+  logoUrl      String?
+  logoS3Key    String?
+  companyName  String?
+  primaryColor String?  @default("#e74c3c")
+  website      String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  jobs           Job[]
+  scoringConfig  ScoringConfig?
+  promptTemplate PromptTemplate?
+  shareLinks     ShareLink[]
+}
+
+model Job {
+  id             String       @id @default(uuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  title          String
+  department     String?
+  description    String       @db.Text
+  requirements   Json         // { mustHave: string[], niceToHave: string[] }
+  salaryRange    Json?        // { min: number, max: number, currency: string }
+  location       String?
+  workMode       WorkMode     @default(HYBRID)
+  experienceLevel String?     // "Junior", "Mid", "Senior", "Lead", "Director"
+  teamNotes      String?      @db.Text
+  status         JobStatus    @default(OPEN)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  candidates Candidate[]
+
+  @@index([organisationId])
+  @@index([status])
+}
+
+model Candidate {
+  id             String          @id @default(uuid())
+  organisationId String
+  jobId          String
+  job            Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
+  phone          String?
+  cvFileKey      String?         // S3 key for original CV
+  cvFileName     String?
+  cvText         String?         @db.Text
+  status         CandidateStatus @default(NEW)
+  analysis       Json?           // Full AI analysis result
+  matchScore     Int?            // 0-100
+  analyisStatus  AnalysisStatus  @default(PENDING)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([jobId])
+  @@index([organisationId])
+  @@index([matchScore(sort: Desc)])
+}
+
+model ScoringConfig {
+  id                    String       @id @default(uuid())
+  organisationId        String       @unique
+  organisation          Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  weightSkills          Int          @default(35)
+  weightExperience      Int          @default(30)
+  weightQualifications  Int          @default(20)
+  weightCulturalFit     Int          @default(15)
+  customCriteria        Json?        // Additional org-specific scoring criteria
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+}
+
+model PromptTemplate {
+  id                 String       @id @default(uuid())
+  organisationId     String       @unique
+  organisation       Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  companyRole        String?      @db.Text
+  assessmentFocus    String?      @db.Text // What to prioritise in assessments
+  languagePrefs      String?      @default("british")
+  customInstructions String?      @db.Text
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+model ShareLink {
+  id             String       @id @default(uuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  code           String       @unique
+  label          String       // e.g. "John - Engineering Manager"
+  jobId          String?      // optional: scope to specific job
+  isActive       Boolean      @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organisationId])
+  @@index([code])
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  ON_HOLD
+  CLOSED
+  FILLED
+}
+
+enum WorkMode {
+  ONSITE
+  REMOTE
+  HYBRID
+}
+
+enum CandidateStatus {
+  NEW
+  SHORTLISTED
+  INTERVIEWING
+  OFFERED
+  REJECTED
+  HIRED
+}
+
+enum AnalysisStatus {
+  PENDING
+  ANALYZING
+  COMPLETED
+  FAILED
+}
