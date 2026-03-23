@@ -569,6 +569,17 @@ body {
   cursor: pointer;
 }
 
+/* Fix expanded row content — allow wrapping and multi-line clamp */
+.data-table-container .ant-table-expanded-row .ant-table-cell {
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
+.data-table-container .ant-table-expanded-row .ant-table-cell * {
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
 /* Badge overflow fix for DataTable cells */
 .cell-overflow-visible,
 td.cell-overflow-visible,
