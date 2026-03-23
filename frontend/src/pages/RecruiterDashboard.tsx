@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card, Typography, Button, List, Tag, Space, Spin, Empty, Modal, message,
-  Form, Input, Select, InputNumber, Collapse, Row, Col, Statistic,
+  Form, Input, Select, InputNumber, Collapse, Row, Col, Statistic, Tabs, App,
 } from "antd";
 import {
   ArrowLeftOutlined, ThunderboltOutlined, FileSearchOutlined,
@@ -36,10 +36,12 @@ export default function RecruiterDashboard() {
       .finally(() => setLoading(false));
   };
 
+  const { modal: antModal } = App.useApp();
+
   useEffect(() => { loadData(); }, []);
 
   const runMatch = async (jobId: string, jobTitle: string) => {
-    Modal.confirm({
+    antModal.confirm({
       title: `Run match for "${jobTitle}"?`,
       content: "This will scan the CV bank, pre-filter candidates, and run AI analysis on the top matches.",
       okText: "Run Match",
@@ -119,89 +121,98 @@ export default function RecruiterDashboard() {
           <Col xs={8}><Card><Statistic title="Completed" value={matches.filter((m) => m.status === "COMPLETED").length} valueStyle={{ color: "#10b981" }} /></Card></Col>
         </Row>
 
-        {/* Open Jobs */}
-        <Card
-          title={<><FileSearchOutlined /> Open Jobs</>}
-          extra={
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowCreateJob(true)}>
-              Create Job
-            </Button>
-          }
-          style={{ marginBottom: 24 }}
-        >
-          {jobs.length === 0 ? (
-            <Empty description="No open jobs yet. Create one to start matching." />
-          ) : (
-            <List
-              dataSource={jobs}
-              renderItem={(job: any) => (
-                <List.Item
-                  actions={[
-                    <Button
-                      type="primary"
-                      icon={<ThunderboltOutlined />}
-                      loading={matching === job.id}
-                      onClick={() => runMatch(job.id, job.title)}
-                    >
-                      Run Match
-                    </Button>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={<Text strong style={{ fontSize: 15 }}>{job.title}</Text>}
-                    description={
-                      <Space wrap>
-                        {job.department && <Tag>{job.department}</Tag>}
-                        {job.location && <Tag>{job.location}</Tag>}
-                        <Tag>{job.workMode}</Tag>
-                        {job.experienceLevel && <Tag color="blue">{job.experienceLevel}</Tag>}
-                        {job.salaryRange && (
-                          <Tag color="green">
-                            {job.salaryRange.currency} {job.salaryRange.min?.toLocaleString()}-{job.salaryRange.max?.toLocaleString()}
-                          </Tag>
+        <Card>
+          <Tabs
+            defaultActiveKey="jobs"
+            items={[
+              {
+                key: "jobs",
+                label: <><FileSearchOutlined /> Open Jobs ({jobs.length})</>,
+                children: (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                      <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowCreateJob(true)}>
+                        Create Job
+                      </Button>
+                    </div>
+                    {jobs.length === 0 ? (
+                      <Empty description="No open jobs yet. Create one to start matching." />
+                    ) : (
+                      <List
+                        dataSource={jobs}
+                        renderItem={(job: any) => (
+                          <List.Item
+                            actions={[
+                              <Button
+                                type="primary"
+                                icon={<ThunderboltOutlined />}
+                                loading={matching === job.id}
+                                onClick={() => runMatch(job.id, job.title)}
+                              >
+                                Run Match
+                              </Button>,
+                            ]}
+                          >
+                            <List.Item.Meta
+                              title={<Text strong style={{ fontSize: 15 }}>{job.title}</Text>}
+                              description={
+                                <Space wrap>
+                                  {job.department && <Tag>{job.department}</Tag>}
+                                  {job.location && <Tag>{job.location}</Tag>}
+                                  <Tag>{job.workMode}</Tag>
+                                  {job.experienceLevel && <Tag color="blue">{job.experienceLevel}</Tag>}
+                                  {job.salaryRange && (
+                                    <Tag color="green">
+                                      {job.salaryRange.currency} {job.salaryRange.min?.toLocaleString()}-{job.salaryRange.max?.toLocaleString()}
+                                    </Tag>
+                                  )}
+                                </Space>
+                              }
+                            />
+                          </List.Item>
                         )}
-                      </Space>
-                    }
+                      />
+                    )}
+                  </>
+                ),
+              },
+              {
+                key: "matches",
+                label: <><HistoryOutlined /> Match History ({matches.length})</>,
+                children: matches.length === 0 ? (
+                  <Empty description="No matches run yet — select a job and click Run Match" />
+                ) : (
+                  <List
+                    dataSource={matches}
+                    renderItem={(run: any) => (
+                      <List.Item
+                        actions={[
+                          <Button onClick={() => navigate(`/recruit/match/${run.id}`)}>View Results</Button>,
+                        ]}
+                      >
+                        <List.Item.Meta
+                          title={run.job?.title || "Unknown Job"}
+                          description={
+                            <Space>
+                              <Tag color={
+                                run.status === "COMPLETED" ? "green" :
+                                run.status === "ANALYZING" ? "processing" :
+                                run.status === "FAILED" ? "red" : "default"
+                              }>
+                                {run.status}
+                              </Tag>
+                              <Text type="secondary">{run._count?.results || 0} candidates</Text>
+                              <Text type="secondary">{new Date(run.createdAt).toLocaleDateString()}</Text>
+                            </Space>
+                          }
+                        />
+                      </List.Item>
+                    )}
                   />
-                </List.Item>
-              )}
-            />
-          )}
-        </Card>
-
-        {/* Match History */}
-        <Card title={<><HistoryOutlined /> Match History</>}>
-          {matches.length === 0 ? (
-            <Empty description="No matches run yet" />
-          ) : (
-            <List
-              dataSource={matches}
-              renderItem={(run: any) => (
-                <List.Item
-                  actions={[
-                    <Button onClick={() => navigate(`/recruit/match/${run.id}`)}>View Results</Button>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={run.job?.title || "Unknown Job"}
-                    description={
-                      <Space>
-                        <Tag color={
-                          run.status === "COMPLETED" ? "green" :
-                          run.status === "ANALYZING" ? "processing" :
-                          run.status === "FAILED" ? "red" : "default"
-                        }>
-                          {run.status}
-                        </Tag>
-                        <Text type="secondary">{run._count?.results || 0} candidates</Text>
-                        <Text type="secondary">{new Date(run.createdAt).toLocaleDateString()}</Text>
-                      </Space>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
-          )}
+                ),
+              },
+            ]}
+          />
         </Card>
 
         {/* Create Job Modal */}
