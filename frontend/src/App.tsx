@@ -20,6 +20,8 @@ import ApplicantForm from "./pages/ApplicantForm";
 import RecruiterDashboard from "./pages/RecruiterDashboard";
 import RecruiterMatchResults from "./pages/RecruiterMatchResults";
 import SharedView from "./pages/SharedView";
+import InterviewerPortal from "./pages/InterviewerPortal";
+import ApplicationStatus from "./pages/ApplicationStatus";
 import { getAccessToken, getSelectedOrg, getShareCode } from "./utils/api";
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
@@ -39,8 +41,14 @@ export default function App() {
       {/* Public - PIN entry (routes to applicant or recruiter based on PIN type) */}
       <Route path="/" element={<PinEntry />} />
 
+      {/* Application status check (public, no auth) */}
+      <Route path="/status" element={<ApplicationStatus />} />
+
       {/* Applicant flow (APPLICANT PIN) */}
       <Route path="/apply" element={<ApplicantForm />} />
+
+      {/* Interviewer flow (INTERVIEWER PIN) */}
+      <Route path="/interview" element={<InterviewerPortal />} />
 
       {/* Recruiter flow (RECRUITER PIN) */}
       <Route path="/recruit" element={<RecruiterDashboard />} />

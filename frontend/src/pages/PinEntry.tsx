@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Input, Button, Typography, Divider, Alert } from "antd";
-import { ArrowLeftOutlined, KeyOutlined, LoginOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, KeyOutlined, LoginOutlined, SearchOutlined } from "@ant-design/icons";
 import { setPin, setPinType } from "../utils/api";
 
 const { Text } = Typography;
@@ -37,6 +37,8 @@ export default function PinEntry() {
       // Route based on PIN type
       if (data.type === "APPLICANT") {
         navigate("/apply");
+      } else if (data.type === "INTERVIEWER") {
+        navigate("/interview");
       } else {
         navigate("/recruit");
       }
@@ -109,9 +111,20 @@ export default function PinEntry() {
             type="link"
             icon={<LoginOutlined />}
             onClick={() => navigate("/admin/login")}
-            style={{ height: 44, fontWeight: 500, color: "#8c8c8c" }}
+            style={{ height: 40, fontWeight: 500, color: "#8c8c8c" }}
           >
             Admin Login
+          </Button>
+
+          <Button
+            size="large"
+            block
+            type="link"
+            icon={<SearchOutlined />}
+            onClick={() => navigate("/status")}
+            style={{ height: 40, fontWeight: 500, color: "#8c8c8c" }}
+          >
+            Check Application Status
           </Button>
         </Card>
 

@@ -126,6 +126,7 @@ model Candidate {
 
   documents      Document[]
   notes          CandidateNote[]
+  talentTags     CandidateTalentTag[]
   matchResults   MatchResult[]
   jobCandidates  JobCandidate[]
 
@@ -251,6 +252,7 @@ model JobCandidate {
   updatedAt      DateTime     @updatedAt
 
   communications Communication[]
+  interviews     Interview[]
 
   @@unique([jobId, candidateId])
   @@index([organisationId])
@@ -292,6 +294,92 @@ model StageTemplate {
 
   @@unique([organisationId, stage])
   @@index([organisationId])
+}
+
+// =============================================================================
+// INTERVIEWS & FEEDBACK
+// =============================================================================
+
+model Interview {
+  id              String       @id @default(uuid())
+  organisationId  String
+  jobCandidateId  String
+  jobCandidate    JobCandidate @relation(fields: [jobCandidateId], references: [id], onDelete: Cascade)
+
+  type            InterviewType @default(VIDEO)
+  title           String        // e.g. "Technical Interview", "Culture Fit Chat"
+  scheduledAt     DateTime?
+  durationMinutes Int           @default(60)
+  location        String?       // Office address, room name
+  meetingLink     String?       // Zoom/Teams URL
+  interviewerName String?       // Who's interviewing
+  interviewerEmail String?
+  interviewerPinId String?      // PIN assigned to this interviewer
+  notes           String?       @db.Text // Pre-interview notes from recruiter
+  status          InterviewStatus @default(SCHEDULED)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  feedback        InterviewFeedback[]
+
+  @@index([jobCandidateId])
+  @@index([organisationId])
+  @@index([interviewerPinId])
+}
+
+model InterviewFeedback {
+  id             String    @id @default(uuid())
+  interviewId    String
+  interview      Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  // Scorecard (each 1-5)
+  technicalSkills   Int?      // 1-5
+  problemSolving    Int?
+  communication     Int?
+  culturalFit       Int?
+  leadership        Int?
+  overallRating     Int?      // 1-5
+
+  strengths         String?   @db.Text
+  concerns          String?   @db.Text
+  notes             String?   @db.Text
+  recommendation    String?   // STRONG_YES, YES, MAYBE, NO
+  submittedBy       String    // interviewer name or PIN label
+  submittedAt       DateTime  @default(now())
+
+  @@index([interviewId])
+}
+
+// =============================================================================
+// TALENT POOL — tag candidates for future roles
+// =============================================================================
+
+model TalentTag {
+  id             String       @id @default(uuid())
+  organisationId String
+  name           String       // e.g. "Strong React", "Revisit Q3", "Leadership potential"
+  color          String?      @default("#3b82f6")
+  createdAt      DateTime     @default(now())
+
+  candidates     CandidateTalentTag[]
+
+  @@unique([organisationId, name])
+  @@index([organisationId])
+}
+
+model CandidateTalentTag {
+  id          String    @id @default(uuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  tagId       String
+  tag         TalentTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  addedBy     String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([candidateId, tagId])
+  @@index([candidateId])
+  @@index([tagId])
 }
 
 // =============================================================================
@@ -348,6 +436,7 @@ model ShareLink {
 enum PinType {
   RECRUITER
   APPLICANT
+  INTERVIEWER
 }
 
 enum JobStatus {
@@ -411,4 +500,19 @@ enum CommStatus {
   DRAFT
   SENT
   COPIED
+}
+
+enum InterviewType {
+  PHONE
+  VIDEO
+  IN_PERSON
+  ASSESSMENT
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
 }

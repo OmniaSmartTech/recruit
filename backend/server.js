@@ -12,6 +12,11 @@ const adminRoutes = require("./routes/admin");
 const authRoutes = require("./routes/auth");
 const shareRoutes = require("./routes/share");
 const pipelineRoutes = require("./routes/pipeline");
+const interviewRoutes = require("./routes/interview");
+const talentPoolRoutes = require("./routes/talentPool");
+const analyticsRoutes = require("./routes/analytics");
+const statusRoutes = require("./routes/status");
+const bulkRoutes = require("./routes/bulk");
 
 const prisma = new PrismaClient();
 const app = express();
@@ -32,6 +37,11 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/share", shareRoutes);
 app.use("/api/pipeline", pipelineRoutes);
+app.use("/api/interviews", interviewRoutes);
+app.use("/api/talent-pool", talentPoolRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/status", statusRoutes);
+app.use("/api/bulk", bulkRoutes);
 
 // File serving (local dev fallback when S3 not configured)
 const { readFile: readStoredFile } = require("./utils/s3");
