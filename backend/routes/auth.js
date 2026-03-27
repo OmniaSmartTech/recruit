@@ -45,10 +45,13 @@ router.post("/resolve", async (req, res) => {
       });
     }
 
-    const isSuperadmin = profile.role === "superadmin" ||
-      userOrgs.some((uo) => (uo.role || "").toLowerCase() === "superadmin");
+    // Check if user has recruitsmart product access (managed via admin.aione.uk)
+    const hasRecruitAccess = (profile.productAccess || []).some(
+      (pa) => pa.product === "recruitsmart" && pa.isActive !== false
+    );
+    const isSuperadmin = profile.isSuperAdmin === true;
 
-    if (isSuperadmin && recruitsmartOrgs.length === 0) {
+    if (isSuperadmin && hasRecruitAccess && recruitsmartOrgs.length === 0) {
       const allOrgs = await prisma.organisation.findMany({
         where: { isActive: true },
         orderBy: { name: "asc" },
