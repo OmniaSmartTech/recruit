@@ -18,7 +18,7 @@ async function auth(req, res, next) {
 
     for (const secret of secrets) {
       try {
-        decoded = jwt.verify(token, secret);
+        decoded = jwt.verify(token, secret, { algorithms: ["HS256"] });
         break;
       } catch (_) {
         continue;
@@ -36,6 +36,10 @@ async function auth(req, res, next) {
         org = await prisma.organisation.findUnique({
           where: { id: orgOverride },
         });
+        // Validate the user belongs to this org
+        if (org && org.aioneOrgId !== decoded.organisationId) {
+          org = null; // Fall through to default org resolution
+        }
       }
 
       if (!org) {
