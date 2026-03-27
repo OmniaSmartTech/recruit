@@ -27,7 +27,11 @@ async function auth(req, res, next) {
     if (!decoded) throw new Error("No valid secret");
 
     if (decoded.userId && decoded.organisationId) {
-      const role = decoded.products?.recruitsmart?.role || "user";
+      // Require recruitsmart product access — managed via admin.aione.uk
+      if (!decoded.products?.recruitsmart) {
+        return res.status(403).json({ error: "RecruitSmart access not granted. Contact your administrator." });
+      }
+      const role = decoded.products.recruitsmart.role || "user";
 
       const orgOverride = req.headers["x-recruitsmart-org"];
       let org;
